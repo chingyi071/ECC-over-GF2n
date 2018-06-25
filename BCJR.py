@@ -56,7 +56,6 @@ class BCJR:
             edg.append(edg_new)
         self.vex = vex
         self.edg = edg
-        self._remove_nonzero()
 
     def plot_sections( self, start, end ):
         bit_per_state = self.n - self.k
@@ -87,7 +86,7 @@ class BCJR:
         nx.draw_networkx_edge_labels(G,pos_dict,edge_labels=labels)
         plt.show()
 
-    def _remove_nonzero( self ):
+    def remove_nonzero( self ):
         self.edg.append([(self.zero_state,0,0)])
 
         for i, e_layer in reversed( list( enumerate(self.edg[:-1]))):
