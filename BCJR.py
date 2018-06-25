@@ -79,7 +79,7 @@ class BCJR:
         G.add_edges_from(edges)
 
         pos = nx.spring_layout(G) # positions for all nodes
-        nx.draw_networkx_nodes(G,pos_dict,node_size=700,)
+        nx.draw_networkx_nodes(G,pos_dict,node_size=600*self.h)
         nx.draw_networkx_labels(G,pos_dict,font_size=12,font_family='sans-serif')
         nx.draw_networkx_edges(G,pos_dict,edgelist=edges, width=6)
         labels = nx.get_edge_attributes(G,'weight')
