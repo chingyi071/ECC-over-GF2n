@@ -88,12 +88,12 @@ class BCJR:
         plt.show()
 
     def _remove_nonzero( self ):
-        self.edg.append([(self.zero_state,GFn.GFn([0],1),self.zero_state)])
+        self.edg.append([(self.zero_state,0,0)])
 
-        for i in range( len(self.edg)-2, -1, -1 ):
-            vex_next = vex_of_edg( self.vex[i+1], self.edg[i+1])
+        for i, e_layer in reversed( list( enumerate(self.edg[:-1]))):
+            vex_next = vex_connected( self.vex[i+1], self.edg[i+1])
             edg_new_list = []
-            for edge in self.edg[i]:
+            for edge in e_layer:
                 _, _, v1 = edge
                 if in_list( vex_next, v1 ):
                     edg_new_list.append(edge)

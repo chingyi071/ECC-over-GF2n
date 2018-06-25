@@ -3,17 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 
-zero = np.zeros(2, dtype=int)
-
-def vex_eq( v0, v1 ):
-    return np.array_equal(v0, v1)
-
-def vex_of_edg( vex, edg ):
+def vex_connected( vex, edg ):
     edgs = []
     for v in vex:
         for e in edg:
             v0, a, v1 = e
-            if vex_eq(v0,v):
+            if np.array_equal(v0,v):
                 edgs.append(v)
                 break
     return edgs
@@ -21,7 +16,7 @@ def vex_of_edg( vex, edg ):
 def v2str( in_arr, i=None ):
     name = ""
     if i is not None: name += str(i) + '_'
-    for s in in_arr:
+    for s in in_arr:    
         name += str(int(s))
     return name
 
