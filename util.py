@@ -3,28 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 
-zero = np.zeros(2, dtype=int)
-
-def vex_eq( v0, v1 ):
-    print("Equal: ", v0, v1, np.array_equal(v0, v1))
-    return np.array_equal(v0, v1)
-
-def vex_of_edg( vex, edg ):
+def vex_connected( vex, edg ):
     edgs = []
-    # print("vex = ", vex)
     for v in vex:
         for e in edg:
             v0, a, v1 = e
-            # print("e = ", e)
-            if vex_eq(v0,v):
+            if np.array_equal(v0,v):
                 edgs.append(v)
                 break
     return edgs
 
-def array2str( in_arr, i ):
-    name = str(i) + '_'
-    for s in in_arr:
-        name += str(s)
+def v2str( in_arr, i=None ):
+    name = ""
+    if i is not None: name += str(i) + '_'
+    for s in in_arr:    
+        name += str(int(s))
     return name
 
 def arr2bistr( arr, dim ):
@@ -43,7 +36,6 @@ def in_list( vec_list, target ):
 def read_mat( filename ):
     with open( filename, newline='') as f:
         reader = csv.reader(f)
-        rows = []
         symbols = []
         for row in reader:
             rows = []
@@ -51,13 +43,60 @@ def read_mat( filename ):
                 symbol_str = []
                 for gf in symbol:
                     symbol_str.append(int(gf))
-                print("symbol = ", symbol_str)
                 rows.append(symbol_str)
             symbols.append(rows)
-        print("symbols = ", symbols)
-        rows_nparr = np.swapaxes(np.array(symbols),0,1)
-        print("rows_nparr = ", rows_nparr.shape)
+        rows_nparr = np.swapaxes( symbols, 0, 1 )
         size = int(int(rows_nparr.size)/len(symbols))
-        print('size = ', size)
-        print("p_mat = ", rows_nparr)
     return rows_nparr
+
+def arr2int( v ):
+    total = 0
+    for e, digit in enumerate(v):
+        total *= 2**digit.nbit
+        total += int(digit)
+    return total
+
+def prmt_ply( nbit ):
+    if nbit==1: return np.array([0,1])
+    if nbit==2: return np.array([1,1,1])
+    if nbit==3: return np.array([1,1,0,1])
+    if nbit==4: return np.array([1,1,0,0,1])
+    if nbit==5: return np.array([1,0,1,0,0,1])
+    if nbit==7: return np.array([1,0,0,1,0,0,0,1])
+    err_msg = "No primitive polynomial for nbit = ", str(nbit)
+    raise ValueError(err_msg)
+
+def gf2_remainder( a, b ):
+    while 1:
+        # print("a = ", a.flatten())
+        # print("b = ", b.flatten())
+        if np.argwhere(a==1).size == 0:
+            if a.size < b.size:
+                return np.append( a, np.zeros(b.size-a.size-1, dtype=int) )
+            else:
+                return a[:b.size-1]
+        msb = np.max(np.argwhere(a==1),axis=0)[0]
+        # print("msb = ", msb)
+        if msb < len(b)-1:
+            if a.size < b.size:
+                return np.append( a, np.zeros(b.size-a.size-1, dtype=int) )
+            else:
+                return a[:b.size-1]
+
+        # remainder = np.append( b, np.zeros( msb - b.size + 1 ) )
+        # remainder = np.append( np.zeros(a.size - msb - 1), remainder )
+        remainder = np.append( np.zeros( msb - b.size + 1 ), b )
+        remainder = np.append( remainder, np.zeros(a.size - msb - 1)).astype(int)
+        # print("remainder = ", remainder.flatten())        
+        result = np.empty_like(a)
+        for i, x in enumerate(result):
+            result[i] = np.remainder( a[i]+remainder[i], 2)
+        a = result
+
+def fit_gfn( a, nbit ):
+    b = prmt_ply(nbit)
+    a = np.remainder(a,2).astype(int)
+    if a.size < b.size:
+        return np.append( a, np.zeros(b.size-a.size-1, dtype=int) )
+    else:
+        return gf2_remainder(a,b)
