@@ -5,15 +5,21 @@ class GFn:
     def __init__( self, value, nbit, dump=False ):
         self.nbit = nbit
         # print('value = ', value)
-        if len(np.shape(value)) is not 1:
-            raise ValueError()
-        self.value = np.array(value).flatten().astype(int)
+        if np.isscalar(value):
+            bin_list = [int(i) for i in bin(value)[2:]]
+            value_array = np.flip( [0]*(nbit-len(bin_list)) + bin_list, axis=0 )
+
+        elif len(np.shape(value)) is 1:
+            value_array = value
+
+        self.value = np.array(value_array).astype(int)
         self.dump = dump
 
     def __radd__( self, a ):
         if self.dump:
             print("radd(", str(self), ",", a, type(a), ")")
         if int(a) == 0: return GFn( self.value, self.nbit)
+        print("radd: Add with non-zero")
         raise Exception()
 
     def __add__( self, a ):
@@ -57,10 +63,6 @@ class GFn:
                 flat_output = self*flat_input[0]
             else:
                 for i in range(0, flat_output.size):
-                    print("i = ", i)
-                    print("a = ", a, type(a), a.shape, a.size)
-                    print("flat_input.shape = ", flat_input.shape)
-                    print("flat_output.shape = ", flat_output.shape)
                     flat_output[i] = self*flat_input[i]
 
             # Reshape the result as the shape of the input
@@ -81,16 +83,21 @@ class GFn:
             psum = np.append( np.zeros(i), self.value[i]*a.value)
             psum = fit_gfn( psum, self.nbit )
             if psum.size != self.nbit:
+                print("Size mismatch1")
                 raise Exception
             product = product + psum
             product = fit_gfn( product, self.nbit )
             if product.size != self.nbit:
+                print("Size mismatch2")
                 raise Exception
         product = fit_gfn( product, self.nbit )
 
         if product.shape[0] is not a.nbit:
+            print("mul(", str(self), self.value.shape, ",", a, type(a), ")")
             print("self.nbit = ", self.nbit)
             print("a.nbit = ", a.nbit)
+            print("Size mismatch3")
+            ggg
             raise Exception()
 
         result = GFn( product, a.nbit )
@@ -131,3 +138,20 @@ class GFn:
 
     def toGF2(self,n):
         return GFn( self.value[:n], n )
+
+def intlist_to_gfpoly( int_list, m ):
+    return [GFn(g,m) for g in int_list]
+
+def symbol_all( nbit ):
+    ret_list = []
+    for i in range(0,2**nbit):
+        ret_list.append(GFn(i,nbit))
+    return ret_list
+
+def find_characteristic( a ):
+    i = 1
+    product = a
+    while 1:
+        if int(product) == 1: return i+1
+        product = product*a
+        i = i+1
