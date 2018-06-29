@@ -107,7 +107,7 @@ def find_extBCH( powers, n, verbose=False ):
 def find_tzeng( powers, n, verbose=False, check=True ):
 	large = n*n
 	max_d0k0 = 2
-	max_d0k0_param = 0
+	max_d0k0_param = (0,0,0,0,0)
 
 	# Select a root as alpha^b0
 	for b0 in powers:
@@ -170,9 +170,67 @@ def find_tzeng( powers, n, verbose=False, check=True ):
 
 	return max_d0k0
 
+def find_conjugate( base, n, q=2 ):
+	index = 1
+	conjugates = []
+	while 1:
+		e = (base * 2**index) % n
+		if e not in conjugates:
+			conjugates.append(e)
+		else:
+			return conjugates
+		index += 1
+
+def find_conjugates( n, m, q=2, verbose=0 ):
+	conjugates = []
+	generator_base = []
+	used = []
+	for i in range(0,n):
+		if i not in used:
+			conjugate_power = find_conjugate( i, n, q )
+			conjugate = []
+			poly = np.poly1d([GFn.GFn(1,m)])
+			for i in conjugate_power:
+				content = np.zeros(2**m)
+				content[i] = 1
+				x = GFn.GFn( fit_gfn(content, m),m )
+				conjugate.append(x)
+				term = np.poly1d([GFn.GFn(1,m), GFn.GFn(fit_gfn(np.array([0]*i+[1]),m),m)])
+				poly = np.polymul(poly,term)
+				if verbose:
+					print("x = ", x)
+					print("term = ")
+					print(term)
+					print("poly_r = ")
+					print(poly)
+					print("poly_l = ")
+					print(poly)
+					for p in poly:
+						print(p)
+			generator_base.append(poly)
+			conjugates.append(conjugate)
+			used.extend(conjugate_power)
+			if verbose: print("----------------")
+
+	generators = []
+	for selection in range(1,2**len(generator_base)-1):
+		bin_list = [int(ii) for ii in bin(selection)[2:]]
+		bin_list_aligned = [0]*(len(generator_base)-len(bin_list)) + bin_list
+		g = np.poly1d([GFn.GFn(1,m)])
+		for sel, base in zip( bin_list_aligned, generator_base ):
+			if sel: g = np.polymul( g, base )
+		if verbose:
+			print("bin_list = ", bin_list_aligned)
+			print("g = ")
+			print(g)
+		generators.append(g)
+
+	return generators
+
 if __name__ == "__main__":
 	n = 7
 	m = find_m(n,2)
+	gen = None
 	z = GFn.GFn(0,m)
 	o = GFn.GFn(1,m)
 
@@ -187,39 +245,52 @@ if __name__ == "__main__":
 
 	args = parser.parse_args()
 
-	g_int = [1,1,1,1,1,1,1]
-	assert_divisible( g_int, n )
-	g = GFn.intlist_to_gfpoly( g_int, m )
-
+	if gen:
+		g_int = [1,1,1,1,1,1,1]
+		assert_divisible( g_int, n )
+		g = GFn.intlist_to_gfpoly( g_int, m )
+		gens = [g]
+	else:
+		gens = find_conjugates(n,m)
+	
 	print("(n,m,q) = (", n, m, "2 )")
-	x_list = alphas(m, range(2**m-1))
-	if args.verbose:
-		for i, x in enumerate(x_list):
-			print("alphas #", i, ": alpha ^", i, "= ", x)
+	for g in gens:
 
-	if args.verbose:
-		print("g(x) = ")
+		print("generator = ")
 		print(g)
-	powers, roots, eqs = find_roots( x_list, g )
-	if len(roots) is not len(g)-1:
-		err_msg = "g(x) is a ", str(len(g)-1), "-degree polynomial, but it has", str(len(roots)), "roots"
-		raise ValueError(err_msg)
+		x_list = alphas(m, range(2**m-1))
+		if args.verbose:
+			for i, x in enumerate(x_list):
+				print("alphas #", i, ": alpha ^", i, "= ", x)
 
-	if args.verbose:
-		for i, rp in enumerate(zip(roots,powers)):
-			root, power = rp
-			print("roots #", i, "roots =", root, "= alpha ^", power)
-		for i, xy in enumerate(eqs):
-			x, y = xy
-			print("eqs #", i, "g(", x, ") = ", y)
+		if args.verbose:
+			print("g(x) = ")
+			print(g)
+		powers, roots, eqs = find_roots( x_list, g )
+		if len(roots) is not g.order:
+			print("g(x) = ")
+			print(g)
+			print("len(g) = ", len(g))
+			err_msg = "g(x) is a ", str(len(g)-1), "-degree polynomial, but it has", str(len(roots)), "roots"
+			raise ValueError(err_msg)
+
+		if args.verbose:
+			for i, rp in enumerate(zip(roots,powers)):
+				root, power = rp
+				print("roots #", i, "roots =", root, "= alpha ^", power)
+			for i, xy in enumerate(eqs):
+				x, y = xy
+				print("eqs #", i, "g(", x, ") = ", y)
 
 
-	BCH_bound    = find_BCH( powers, 2**m-1, verbose=args.verbose )
-	extBCH_bound = find_extBCH( powers, 2**m-1, verbose=args.verbose )
-	tzeng_bound  = find_tzeng( powers, 2**m-1, verbose=args.verbose )
-	print("BCH bound = ", BCH_bound)
-	print("extBCH bound = ", extBCH_bound)
-	print("tzeng bound = ", tzeng_bound)
-	# def BCH_bound( n, b, gen ):
+		BCH_bound    = find_BCH( powers, 2**m-1, verbose=args.verbose )
+		extBCH_bound = find_extBCH( powers, 2**m-1, verbose=args.verbose )
+		tzeng_bound  = find_tzeng( powers, 2**m-1, verbose=args.verbose )
+		print("BCH bound    = ", BCH_bound)
+		print("extBCH bound = ", extBCH_bound)
+		print("tzeng bound  = ", tzeng_bound)
+		# def BCH_bound( n, b, gen ):
 
-	w = get_min_weight( g, n, verbose=args.verbose )
+		w = get_min_weight( g, n, verbose=args.verbose )
+		print("Min weight   = ", w)
+		print()
