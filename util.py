@@ -62,27 +62,31 @@ def prmt_ply( nbit ):
     if nbit==3: return np.array([1,1,0,1])
     if nbit==4: return np.array([1,1,0,0,1])
     if nbit==5: return np.array([1,0,1,0,0,1])
+    if nbit==6: return np.array([1,1,0,0,0,0,1])
     if nbit==7: return np.array([1,0,0,1,0,0,0,1])
     err_msg = "No primitive polynomial for nbit = ", str(nbit)
     raise ValueError(err_msg)
 
 def gf2_remainder( a, b ):
     while 1:
-        # print("a = ", a.flatten())
-        # print("b = ", b.flatten())
+
+        # Remainder is 0, return with padding or slicing
         if np.argwhere(a==1).size == 0:
             if a.size < b.size:
                 return np.append( a, np.zeros(b.size-a.size-1, dtype=int) )
             else:
                 return a[:b.size-1]
+
         msb = np.max(np.argwhere(a==1),axis=0)[0]
-        # print("msb = ", msb)
+
+        # Degree of remainder is less than divisor
         if msb < len(b)-1:
             if a.size < b.size:
                 return np.append( a, np.zeros(b.size-a.size-1, dtype=int) )
             else:
                 return a[:b.size-1]
 
+        # Do padding to align the MSB of remainder to the dividend
         # remainder = np.append( b, np.zeros( msb - b.size + 1 ) )
         # remainder = np.append( np.zeros(a.size - msb - 1), remainder )
         remainder = np.append( np.zeros( msb - b.size + 1 ), b )
@@ -100,3 +104,4 @@ def fit_gfn( a, nbit ):
         return np.append( a, np.zeros(b.size-a.size-1, dtype=int) )
     else:
         return gf2_remainder(a,b)
+

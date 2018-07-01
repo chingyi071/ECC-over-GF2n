@@ -10,8 +10,17 @@ class GFn:
             value_array = np.flip( [0]*(nbit-len(bin_list)) + bin_list, axis=0 )
 
         elif len(np.shape(value)) is 1:
-            value_array = value
+            if np.shape(value)[0] > nbit:
+                value_array = fit_gfn( value, nbit )
+            elif np.shape(value)[0] < nbit:
+                value_array = np.append( value, np.zeros(nbit-np.shape(value)[0]) )
+            else:
+                value_array = np.array(value)
 
+        if value_array.shape[0] is not nbit:
+            print("shape = ", value_array.shape)
+            print("ideal = ", (nbit,))
+            raise Exception
         self.value = np.array(value_array).astype(int)
         self.dump = dump
 
@@ -38,6 +47,9 @@ class GFn:
             print("add return ", str(result))
         return result
 
+    def __sub__( self, a ):
+        return self+a
+
     def __rmul__( self, a ):
         if self.dump:
             print("rmul(", str(self), ",", a, type(a), ")")
@@ -55,24 +67,13 @@ class GFn:
 
         # If multiplicend is an array, separte it into elements
         if type(a) is type(np.array([])):
-            flat_input = a.flatten()
-
-            # flat_output is an 1-D array storing each element result
-            flat_output = np.empty_like( a, dtype=object )
-            if flat_output.size == 1:
-                flat_output = self*flat_input[0]
-            else:
-                for i in range(0, flat_output.size):
-                    flat_output[i] = self*flat_input[i]
-
-            # Reshape the result as the shape of the input
-            return np.reshape( flat_output, a.shape )
+            return a.__rmul__(self)
 
         if np.isscalar(a):
             value = a*self.value
             return GFn( fit_gfn(value, self.nbit), self.nbit)
 
-        if type(a) is not type(GFn([0],1)):
+        if type(a) is not type(GFn(0,1)):
             raise ValueError( str(a) + "is neither GFn or np.array")
 
         # Shift multiplicend and add it to psum
@@ -97,7 +98,6 @@ class GFn:
             print("self.nbit = ", self.nbit)
             print("a.nbit = ", a.nbit)
             print("Size mismatch3")
-            ggg
             raise Exception()
 
         result = GFn( product, a.nbit )
@@ -107,7 +107,7 @@ class GFn:
         return GFn( product, a.nbit )
 
     def __eq__( self, a ):
-        if type(a) is not type(GFn([0],1)):
+        if type(a) is not type(GFn(0,1)):
             return int(self) == a
         if not self.nbit == a.nbit:
             raise ValueError("GFn compare two input with different bit length")
@@ -137,9 +137,21 @@ class GFn:
         return True
 
     def toGF2(self,n):
-        return GFn( self.value[:n], n )
+        if n < self.nbit:
+            return GFn( self.value[:n], n )
+        else:
+            return GFn( np.append(self.value, np.zeros(n-self.nbit)), n )
 
-def intlist_to_gfpoly( int_list, m ):
+    def power(self,n):
+        e = GFn(1,self.nbit)
+        for i in range(0,n):
+            e = e*self
+        return e
+
+    def __exp__(self,n):
+        return self.power(n)
+
+def intlist_to_gfpolylist( int_list, m ):
     return [GFn(g,m) for g in int_list]
 
 def symbol_all( nbit ):
@@ -155,3 +167,44 @@ def find_characteristic( a ):
         if int(product) == 1: return i+1
         product = product*a
         i = i+1
+
+def gfn_array_modulo( dividend, modular_poly ):
+    logq = dividend[0].nbit
+    zero_logq = GFn(0,logq)
+    one_logq  = GFn(1,logq)
+
+    modular = np.array(modular_poly)
+    while 1:
+
+        # Remainder is 0, return with padding or slicing
+        if np.argwhere(dividend!=zero_logq).size == 0:
+            if len(dividend) < len(modular):
+                return np.append( [zero_logq] * (len(modular)-len(dividend)-1), dividend )
+            else:
+                return dividend[-len(modular):]
+
+        msb = np.min(np.argwhere(dividend!=zero_logq),axis=0)[0]
+
+        # Degree of modular is less than dividend
+        if msb > len(dividend) - len(modular):
+            if len(dividend) < len(modular):
+                return np.append( [zero_logq] * (len(modular)-len(dividend)-1), dividend )
+            else:
+                return dividend[-len(modular):]
+
+        # Do padding to align the MSB of modular to the dividend
+        remainder = np.append( [zero_logq] * msb, modular )
+        remainder = np.append( remainder, [zero_logq] * (len(dividend) - msb - len(modular)))
+        remainder = remainder * dividend[msb]
+
+        # Obtain the result from polynomial addition
+        result = np.empty_like(dividend)
+        for i, x in enumerate(result):
+            result[i] = dividend[i]+remainder[i]
+        dividend = result
+
+def gen_zero_one_alpha_overGFq( q ):
+    import math
+    if q<4: raise ValueError
+    logq = int(math.log2(q))
+    return GFn(0,logq), GFn(1,logq), GFn(2,logq)

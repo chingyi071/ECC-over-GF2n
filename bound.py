@@ -2,6 +2,7 @@ import numpy as np
 import GFn
 from util import gf2_remainder, fit_gfn
 from fractions import gcd
+import math
 
 def find_m( n, q ):
 	m = 1
@@ -10,12 +11,6 @@ def find_m( n, q ):
 		if (qm-1) % n == 0: return m
 		m += 1
 		qm *= q
-
-def assert_divisible( g_int, n ):
-	r = gf2_remainder(np.array([1]+[0]*(n-1)+[1]), np.array(g_int))
-	if np.count_nonzero(r):
-		print("Remainder = ", r)
-		raise ValueError(g_int, "is not divisible to x^n+1")
 
 def alphas( m, rng ):
 	x_list = []
@@ -38,12 +33,13 @@ def find_roots( x_list, g ):
 			roots.append(x)
 	return powers, roots, eqs
 
-def get_min_weight( g, n, verbose=0 ):
+def get_min_weight( g, n, m, verbose=0 ):
 
 	# Generate g(x) with coeff in GF(2)
-	g = np.poly1d([s.toGF2(1) for s in g])
+	g = np.poly1d([s.toGF2(m) for s in g])
 	k = n-len(g)
 	num_of_info = 2**k
+	print("n,g,k,num_of_info = ", n,len(g),k,num_of_info)
 	if verbose:
 		print("reducted g = ", g)
 		print("num_of_info = ", num_of_info)
@@ -53,15 +49,17 @@ def get_min_weight( g, n, verbose=0 ):
 	for value in range(1,num_of_info):
 		bin_list = [int(ii) for ii in bin(value)[2:]]
 		bin_list_aligned = [0]*(n-len(bin_list)) + bin_list
-		gf_list = [ GFn.GFn(s,1) for s in bin_list_aligned ]
+		gf_list = [ GFn.GFn(s,m) for s in bin_list_aligned ]
 		symbols.append( gf_list )
 
 	# Find min weight in the product of g(x) and all symbols
-	min_weight = n
+	min_weight = n+1
 	for i, s in enumerate(symbols):
 		y = np.polymul(s,g)
 		weight = sum([int(yy)!=0 for yy in y])
-		min_weight = min( weight, min_weight )
+		if weight < min_weight:
+			min_weight = weight
+			min_codeword = s
 		if verbose:
 			print("Info #", i, ":", s)
 			print("y = symbol * g(x) = ")
@@ -70,7 +68,9 @@ def get_min_weight( g, n, verbose=0 ):
 			print("------------")
 
 	if verbose: print("min_weight = ", min_weight)
-	return min_weight
+	y = np.polymul(min_codeword, g)
+
+	return min_weight, min_codeword
 
 def find_BCH( powers, n, verbose=False ):
 	max_d0 = 2
@@ -158,7 +158,8 @@ def find_tzeng( powers, n, verbose=False, check=True ):
 				d0 = d0+1
 
 		if verbose: print("---")
-	print("max d0k0 = ", max_d0k0, ", (b0,s,d0,s2,k0) = ", max_d0k0_param)
+	if verbose:
+		print("max d0k0 = ", max_d0k0, ", (b0,s,d0,s2,k0) = ", max_d0k0_param)
 
 	if check:
 		b0, s, d0, s2, k0 = max_d0k0_param
@@ -170,69 +171,108 @@ def find_tzeng( powers, n, verbose=False, check=True ):
 
 	return max_d0k0
 
-def find_conjugate( base, n, q=2 ):
-	index = 1
+def find_conjugate( base, n, m, q ):
 	conjugates = []
-	while 1:
-		e = (base * 2**index) % n
+	for index in range(0, q**m):
+		e = (base * q**index) % (q**m-1)
 		if e not in conjugates:
 			conjugates.append(e)
 		else:
 			return conjugates
-		index += 1
 
-def find_conjugates( n, m, q=2, verbose=0 ):
-	conjugates = []
-	generator_base = []
-	used = []
-	for i in range(0,n):
-		if i not in used:
-			conjugate_power = find_conjugate( i, n, q )
-			conjugate = []
-			poly = np.poly1d([GFn.GFn(1,m)])
-			for i in conjugate_power:
-				content = np.zeros(2**m)
-				content[i] = 1
-				x = GFn.GFn( fit_gfn(content, m),m )
-				conjugate.append(x)
-				term = np.poly1d([GFn.GFn(1,m), GFn.GFn(fit_gfn(np.array([0]*i+[1]),m),m)])
-				poly = np.polymul(poly,term)
-				if verbose:
-					print("x = ", x)
-					print("term = ")
-					print(term)
-					print("poly_r = ")
-					print(poly)
-					print("poly_l = ")
-					print(poly)
-					for p in poly:
-						print(p)
-			generator_base.append(poly)
-			conjugates.append(conjugate)
-			used.extend(conjugate_power)
-			if verbose: print("----------------")
+def gf_map( a, b, alpha, verbose=0 ):
 
-	generators = []
-	for selection in range(1,2**len(generator_base)-1):
-		bin_list = [int(ii) for ii in bin(selection)[2:]]
-		bin_list_aligned = [0]*(len(generator_base)-len(bin_list)) + bin_list
-		g = np.poly1d([GFn.GFn(1,m)])
-		for sel, base in zip( bin_list_aligned, generator_base ):
-			if sel: g = np.polymul( g, base )
+	# alpha^s is 
+	s = int((2**a-1)/(2**b-1))
+	
+	if verbose:
+		print("alpha^"+str(s), "in GF( 2^"+str(a),") = beta in GF( 2^"+str(b), ")")
+	# print("s = ", s)
+	src = [alpha.power(i) for i in range(0,2**a-1,s)]
+	# print("src = ", src)
+	trg = [GFn.GFn(2,b).power(i) for i in range(0,int((2**a-1)/s)) ]
+	table = [(GFn.GFn(0,a), GFn.GFn(0,b) )]
+	for i,xy in enumerate(zip(src,trg)):
+		x,y = xy
 		if verbose:
-			print("bin_list = ", bin_list_aligned)
-			print("g = ")
-			print(g)
+			print("#", i, "(alpha^"+str(s)+")^"+str(i), " = ", x, "on GF( 2^"+str(a),") = beta^"+str(i), "in GF( 2^"+str(b), ")")
+		table.append((x,y))
+	if verbose:
+		print("--")
+	return table
+
+
+def find_generators( n, m, q=2, verbose=0 ):
+	log_ext = m * int(math.log2(q))
+	alpha = GFn.GFn(2,log_ext)
+
+	if verbose:
+		print("Step 1: Find all cyclotonics group and its generator")
+	used = []
+	cyclotonics = []
+	generator_base = []
+	for i in range(0,(q**m)-1):
+		if i not in used and int(alpha.power(i).power(n))==1:
+			conjugate_power = find_conjugate( i, n, m, q )
+			conjugate = []
+			poly = np.poly1d([GFn.GFn(1,log_ext)])
+			for i in conjugate_power:
+				# poly *= term = alpha^i
+				term = np.poly1d([GFn.GFn(1,log_ext), GFn.GFn(np.array([0]*i+[1]),log_ext)])
+				poly = np.polymul(poly,term)
+			generator_base.append(poly)
+			cyclotonics.append(conjugate_power)
+			used.extend(conjugate_power)
+
+			if verbose:
+				cyc, gen = conjugate_power, poly
+				print("#", i, "cyclotonics = ", cyc)
+				print("generator = \n", gen)
+				print("----")
+
+	if verbose:
+		print("Step 2: Find mapping between GF(2^",log_ext,") and GF(2^", m, ")")
+	table = gf_map( log_ext, m, alpha )
+
+	if verbose:
+		print("Step 3: Map generator polynomial from GF(2^",log_ext,") to GF(2^", m, ")")
+	gens_gfm = []
+	for i, base in enumerate(generator_base):
+		gen_gfm_coeffs = []
+		for b in base:
+			gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
+			gen_gfm_coeffs.append( gen_gfm_coeff )
+		gen_gfm = np.poly1d(gen_gfm_coeffs)
+		gens_gfm.append( gen_gfm )
+		if verbose:
+			print("Irreducible base #"+str(i))
+			print("Base coeff from ascending order = ", base.c)
+			print("Final coef from ascending order = ", final.c, "\n", final)
+			print("---")
+
+	if verbose:
+		print("Step 4: Create every generator polynomial from those irreducible term")
+	generators = []
+	for selection in range(1,2**len(gens_gfm)-1):
+		bin_list = [int(ii) for ii in bin(selection)[2:]]
+		bin_list_aligned = [0]*(len(gens_gfm)-len(bin_list)) + bin_list
+		g = np.poly1d([GFn.GFn(1,m)])
+		for sel, base in zip( bin_list_aligned, gens_gfm ):
+			if sel: g = np.polymul( g, base )
 		generators.append(g)
+		if verbose:
+			print("Generator #", str(selection), ": ")
+			print("bin_list = ", bin_list_aligned)
+			print("g = ", g.c)
+			print(g)
+			print("---")
 
 	return generators
 
 if __name__ == "__main__":
-	n = 7
-	m = find_m(n,2)
-	gen = None
-	z = GFn.GFn(0,m)
-	o = GFn.GFn(1,m)
+	n = 15
+	q = 4
+	m = find_m(n,q)
 
 	a = GFn.GFn(2,m)
 	if GFn.find_characteristic(a) is not 2**m:
@@ -242,16 +282,24 @@ if __name__ == "__main__":
 	import argparse
 	parser = argparse.ArgumentParser(description="Flip a switch by setting a flag")
 	parser.add_argument('--verbose', action='store_true')
-
+	parser.add_argument('--gen')
 	args = parser.parse_args()
 
-	if gen:
-		g_int = [1,1,1,1,1,1,1]
-		assert_divisible( g_int, n )
-		g = GFn.intlist_to_gfpoly( g_int, m )
-		gens = [g]
+	if args.gen is not None:
+		g_int = [int(s) for s in args.gen]
+		gens = [np.poly1d(GFn.intlist_to_gfpolylist( g_int, m ))]
 	else:
-		gens = find_conjugates(n,m)
+		gens = find_generators(n,m,q)
+
+	zero_q, one_q, alpha_q = GFn.gen_zero_one_alpha_overGFq(2**m)
+	xn_1 = np.array([one_q]+[zero_q]*(n-1)+[one_q])
+	print("gens[0] = ", gens[0].c)
+	print("xn_1 = ", xn_1)
+	for gg in gens:			
+		r = GFn.gfn_array_modulo( xn_1, gg )
+		if sum([int(rr) for rr in r]) > 0:
+			print("gg = \n", gg)
+			raise Exception
 	
 	print("(n,m,q) = (", n, m, "2 )")
 	for g in gens:
@@ -267,7 +315,7 @@ if __name__ == "__main__":
 			print("g(x) = ")
 			print(g)
 		powers, roots, eqs = find_roots( x_list, g )
-		if len(roots) is not g.order:
+		if len(roots) > g.order:
 			print("g(x) = ")
 			print(g)
 			print("len(g) = ", len(g))
@@ -283,6 +331,7 @@ if __name__ == "__main__":
 				print("eqs #", i, "g(", x, ") = ", y)
 
 
+		print("Roots = ", powers)
 		BCH_bound    = find_BCH( powers, 2**m-1, verbose=args.verbose )
 		extBCH_bound = find_extBCH( powers, 2**m-1, verbose=args.verbose )
 		tzeng_bound  = find_tzeng( powers, 2**m-1, verbose=args.verbose )
@@ -291,6 +340,7 @@ if __name__ == "__main__":
 		print("tzeng bound  = ", tzeng_bound)
 		# def BCH_bound( n, b, gen ):
 
-		w = get_min_weight( g, n, verbose=args.verbose )
+		w, uw = get_min_weight( g, n, m, verbose=args.verbose )
 		print("Min weight   = ", w)
+		print("Min codeword = ", uw)
 		print()
