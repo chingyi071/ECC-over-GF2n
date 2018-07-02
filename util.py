@@ -105,3 +105,10 @@ def fit_gfn( a, nbit ):
     else:
         return gf2_remainder(a,b)
 
+def sep( n, max_len, modulo ):
+    a = []
+    for i in range( 0, max_len ):
+        a = [int(n % modulo)] + a
+        n = int(n/modulo)
+    return a
+

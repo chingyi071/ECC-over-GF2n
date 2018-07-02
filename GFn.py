@@ -208,3 +208,33 @@ def gen_zero_one_alpha_overGFq( q ):
     if q<4: raise ValueError
     logq = int(math.log2(q))
     return GFn(0,logq), GFn(1,logq), GFn(2,logq)
+
+def gf_map( a, b, verbose=0 ):
+
+    alpha = GFn(2,a)
+    if a>b:
+        s = int((2**a-1)/(2**b-1))
+        src = [alpha.power(i) for i in range(0,2**a-1,s)]
+        trg = [GFn(2,b).power(i) for i in range(0,2**b-1) ]
+    elif a<b:
+        s = int((2**b-1)/(2**a-1))
+        src = [alpha.power(i) for i in range(0,2**a-1)]
+        trg = [GFn(2,b).power(i) for i in range(0,2**b-1,s) ]
+    else: raise ValueError
+
+    if verbose:
+        print("alpha^"+str(s), "in GF( 2^"+str(a),") = beta in GF( 2^"+str(b), ")")
+    table = [(GFn(0,a), GFn(0,b) )]
+    for i,xy in enumerate(zip(src,trg)):
+        x,y = xy
+        if verbose:
+            print("#", i, "(alpha^"+str(s)+")^"+str(i), " = ", x, "on GF( 2^"+str(a),") = beta^"+str(i), "in GF( 2^"+str(b), ")")
+        table.append((x,y))
+    if verbose:
+        print("--")
+    return table
+
+def weight( f ):
+    int_list = [int(x) for x in f]
+    non_zero_list = [x>0 for x in int_list]
+    return sum(non_zero_list)
