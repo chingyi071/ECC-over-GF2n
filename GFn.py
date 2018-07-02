@@ -205,21 +205,32 @@ def gfn_array_modulo( dividend, modular_poly ):
 
 def gen_zero_one_alpha_overGFq( q ):
     import math
-    if q<4: raise ValueError
     logq = int(math.log2(q))
-    return GFn(0,logq), GFn(1,logq), GFn(2,logq)
+    if q<4:
+        return GFn(0,logq), GFn(1,logq), None
+    else:
+        return GFn(0,logq), GFn(1,logq), GFn(2,logq)
 
 def gf_map( a, b, verbose=0 ):
 
-    alpha = GFn(2,a)
     if a>b:
         s = int((2**a-1)/(2**b-1))
-        src = [alpha.power(i) for i in range(0,2**a-1,s)]
-        trg = [GFn(2,b).power(i) for i in range(0,2**b-1) ]
+        if b==1:
+            src = [GFn(1,a)]
+            trg = [GFn(1,1)]
+        else:
+            alpha = GFn(2,a)
+            src = [alpha.power(i) for i in range(0,2**a-1,s)]
+            trg = [GFn(2,b).power(i) for i in range(0,2**b-1) ]
     elif a<b:
         s = int((2**b-1)/(2**a-1))
-        src = [alpha.power(i) for i in range(0,2**a-1)]
-        trg = [GFn(2,b).power(i) for i in range(0,2**b-1,s) ]
+        if a==1:
+            src = [GFn(1,1)]
+            trg = [GFn(1,b)]
+        else:
+            alpha = GFn(2,a)
+            src = [alpha.power(i) for i in range(0,2**a-1)]
+            trg = [GFn(2,b).power(i) for i in range(0,2**b-1,s) ]
     else: raise ValueError
 
     if verbose:

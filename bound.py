@@ -176,7 +176,6 @@ def find_conjugate( base, n, m, q ):
 
 def poly_map( poly, src, trg ):
 	table = GFn.gf_map( src, trg )
-
 	gen_gfm_coeffs = []
 	for b in poly:
 		gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
@@ -267,7 +266,7 @@ if __name__ == "__main__":
 		g_int = [int(s) for s in args.gen]
 		gens = [np.poly1d(GFn.intlist_to_gfpolylist( g_int, log_q ))]
 	else:
-		gens = find_generators(n,m,q,verbose=1)
+		gens = find_generators(n,m,q,verbose=args.verbose)
 
 	zero_q, one_q, alpha_q = GFn.gen_zero_one_alpha_overGFq(q)
 	xn_1 = np.array([one_q]+[zero_q]*(n-1)+[one_q])
@@ -284,9 +283,6 @@ if __name__ == "__main__":
 			print("alphas #", i, ": alpha ^", i, "= ", x)
 
 	for g in gens:
-		if args.verbose:
-			print("g(x) = ")
-			print(g)
 		roots_power, roots, eqs = find_roots( x_list, g, base=log_q, ext=log_ext )
 		if len(roots) is not g.order:
 			print("g(x) = ")
@@ -303,7 +299,7 @@ if __name__ == "__main__":
 				x, y = xy
 				print("eqs #", i, "g(", x, ") = ", y)
 
-
+		print("g(x) = \n", g)
 		print("Roots = ", roots_power)
 		BCH_bound    = find_BCH(    roots_power, n=n, ext=log_ext, verbose=args.verbose )
 		extBCH_bound = find_extBCH( roots_power, n=n, ext=log_ext, verbose=args.verbose )
