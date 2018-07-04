@@ -151,6 +151,15 @@ class GFn:
     def __exp__(self,n):
         return self.power(n)
 
+    def is_root(self, g):
+        y = np.polyval(g,self)
+        return y.iszero()
+
+    def inverse(self):
+        for i in range(0,2**self.nbit):
+            if int( GFn(i,self.nbit) * self )==1:
+                return GFn(i,self.nbit)
+
 def intlist_to_gfpolylist( int_list, m ):
     return [GFn(g,m) for g in int_list]
 
@@ -198,7 +207,7 @@ def gfn_array_modulo( dividend, modular_poly ):
         remainder = remainder * dividend[msb]
 
         # Obtain the result from polynomial addition
-        result = np.empty_like(dividend)
+        result = np.empty(len(dividend), dtype=object)
         for i, x in enumerate(result):
             result[i] = dividend[i]+remainder[i]
         dividend = result
@@ -249,3 +258,4 @@ def weight( f ):
     int_list = [int(x) for x in f]
     non_zero_list = [x>0 for x in int_list]
     return sum(non_zero_list)
+

@@ -13,28 +13,36 @@ def find_m( n, q ):
 		m += 1
 		qm *= q
 
+def poly_map( poly, src, trg ):
+	table = GFn.gf_map( src, trg )
+	gen_gfm_coeffs = []
+	for b in poly:
+		gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
+		gen_gfm_coeffs.append( gen_gfm_coeff )
+	gen_gfm = np.poly1d(gen_gfm_coeffs)
+	return gen_gfm
+
 def find_roots( x_list, g, base, ext ):
-	roots_power = []
+	index = []
 	roots  = []
-	eqs = []
-	log_ext = m * int(math.log2(q))
-	g_ext = poly_map( g, base, ext )
+	if base is not ext:
+		g_ext = poly_map( g, base, ext )
+	else:
+		g_ext = g
 
-	for e, x in enumerate(x_list):
-		y = np.polyval(g_ext,x)
-		eqs.append((x,y))
-		if y.iszero():
-			roots_power.append(e)
+	for i, x in enumerate(x_list):
+		if x.is_root( g_ext ):
+			index.append(i)
 			roots.append(x)
-	return roots_power, roots, eqs
+	return index, roots
 
-def get_min_weight( g, n, m, verbose=0 ):
+def get_min_weight( g, n, verbose=0 ):
 
-	# Generate g(x) with coeff in GF(2)
-	g = np.poly1d([s.toGF2(m) for s in g])
 	k = n-len(g)
-	num_of_info = q**k
+	nbit = g[0].nbit
+	num_of_info = (2**nbit)**k
 	print("n,g,k,num_of_info = ", n,len(g),k,num_of_info)
+
 	if verbose:
 		print("reducted g = ", g)
 		print("num_of_info = ", num_of_info)
@@ -42,16 +50,16 @@ def get_min_weight( g, n, m, verbose=0 ):
 	# Create symbols from 1 to 2^k
 	symbols = []
 	for value in range(1,num_of_info):
-		bin_list_aligned = sep( value, n, q)
+		bin_list_aligned = sep( value, n, 2**nbit)
 		# print("(", bin_list_aligned, bin_list_aligned2, ")")
-		gf_list = [ GFn.GFn(s,m) for s in bin_list_aligned ]
+		gf_list = [ GFn.GFn(s,nbit) for s in bin_list_aligned ]
 		symbols.append( gf_list )
 
 	# Find min weight in the product of g(x) and all symbols
 	min_weight = n+1
 	for i, s in enumerate(symbols):
 		y = np.polymul(s,g)
-		weight = sum([int(yy)!=0 for yy in y])
+		weight = GFn.weight(y)
 		if weight < min_weight:
 			min_weight = weight
 			min_codeword = s
@@ -63,8 +71,6 @@ def get_min_weight( g, n, m, verbose=0 ):
 			print("------------")
 
 	if verbose: print("min_weight = ", min_weight)
-	y = np.polymul(min_codeword, g)
-
 	return min_weight, min_codeword
 
 def find_BCH( roots_power, n, ext, verbose=False ):
@@ -165,26 +171,19 @@ def find_tzeng( roots_power, n, ext, verbose=False, check=True ):
 
 	return max_d0k0
 
-def find_conjugate( base, n, m, q ):
+def find_conjugate( value, base, ext ):
 	conjugates = []
-	for index in range(0, q**m):
-		e = (base * q**index) % (q**m-1)
+	for index in range(0, 2**ext):
+		e = (value * (2**base)**index) % (2**ext-1)
 		if e not in conjugates:
 			conjugates.append(e)
 		else:
 			return conjugates
 
-def poly_map( poly, src, trg ):
-	table = GFn.gf_map( src, trg )
-	gen_gfm_coeffs = []
-	for b in poly:
-		gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
-		gen_gfm_coeffs.append( gen_gfm_coeff )
-	gen_gfm = np.poly1d(gen_gfm_coeffs)
-	return gen_gfm
 
 def find_generators( n, m, q=2, verbose=0 ):
-	log_ext = m * int(math.log2(q))
+	log_q = int(math.log2(q))
+	log_ext = m * log_q
 	alpha = GFn.GFn(2,log_ext)
 
 	if verbose:
@@ -194,7 +193,7 @@ def find_generators( n, m, q=2, verbose=0 ):
 	generator_base = []
 	for i in range(0,(q**m)-1):
 		if i not in used and int(alpha.power(i).power(n))==1:
-			conjugate_power = find_conjugate( i, n, m, q )
+			conjugate_power = find_conjugate( i, base=log_q, ext=log_ext )
 			conjugate = []
 			poly = np.poly1d([GFn.GFn(1,log_ext)])
 			for i in conjugate_power:
@@ -283,7 +282,7 @@ if __name__ == "__main__":
 			print("alphas #", i, ": alpha ^", i, "= ", x)
 
 	for g in gens:
-		roots_power, roots, eqs = find_roots( x_list, g, base=log_q, ext=log_ext )
+		roots_power, roots = find_roots( x_list, g, base=log_q, ext=log_ext )
 		if len(roots) is not g.order:
 			print("g(x) = ")
 			print(g)
@@ -295,9 +294,6 @@ if __name__ == "__main__":
 			for i, rp in enumerate(zip(roots,roots_power)):
 				root, power = rp
 				print("roots #", i, "roots =", root, "= alpha ^", power)
-			for i, xy in enumerate(eqs):
-				x, y = xy
-				print("eqs #", i, "g(", x, ") = ", y)
 
 		print("g(x) = \n", g)
 		print("Roots = ", roots_power)
@@ -309,7 +305,7 @@ if __name__ == "__main__":
 		print("tzeng bound  = ", tzeng_bound)
 		# def BCH_bound( n, b, gen ):
 
-		w, uw = get_min_weight( g, n, m, verbose=args.verbose )
+		w, uw = get_min_weight( g, n, verbose=args.verbose )
 		print("Min weight   = ", w)
 		print("Min codeword = ", uw)
 		print()
