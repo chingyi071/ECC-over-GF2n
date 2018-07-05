@@ -148,6 +148,12 @@ class GFn:
             e = e*self
         return e
 
+    def log_a(self):
+        alpha = GFn(2,self.nbit)
+        for i in range(0,2**self.nbit):
+            if alpha.power(i) == self:
+                return i
+
     def __exp__(self,n):
         return self.power(n)
 

@@ -22,9 +22,10 @@ def poly_map( poly, src, trg ):
 	gen_gfm = np.poly1d(gen_gfm_coeffs)
 	return gen_gfm
 
-def find_roots( x_list, g, base, ext ):
+def find_roots( x_list, g, ext ):
 	index = []
 	roots  = []
+	base = g[0].nbit
 	if base is not ext:
 		g_ext = poly_map( g, base, ext )
 	else:
@@ -73,7 +74,12 @@ def get_min_weight( g, n, verbose=0 ):
 	if verbose: print("min_weight = ", min_weight)
 	return min_weight, min_codeword
 
-def find_BCH( roots_power, n, ext, verbose=False ):
+def find_BCH( n, ext, g, verbose=False ):
+
+	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**ext)
+	alphas_power = [alpha_ext.power(i) for i in range(2**ext-1)]
+	roots_power, roots = find_roots( alphas_power, g, ext=log_ext )
+
 	max_d0 = 2
 	large = n*n
 
@@ -86,7 +92,12 @@ def find_BCH( roots_power, n, ext, verbose=False ):
 		max_d0 = max(d0-1, max_d0)
 	return max_d0
 
-def find_extBCH( roots_power, n, ext, verbose=False ):
+def find_extBCH( n, ext, g, verbose=False ):
+
+	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**ext)
+	alphas_power = [alpha_ext.power(i) for i in range(2**ext-1)]
+	roots_power, roots = find_roots( alphas_power, g, ext=log_ext )
+
 	max_d0 = 2
 	large = n*n
 	# Select a root as alpha^b0
@@ -104,7 +115,12 @@ def find_extBCH( roots_power, n, ext, verbose=False ):
 			max_d0 = max(d0-1, max_d0)
 	return max_d0
 
-def find_tzeng( roots_power, n, ext, verbose=False, check=True ):
+def find_tzeng( n, ext, g, verbose=False, check=True ):
+
+	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**ext)
+	alphas_power = [alpha_ext.power(i) for i in range(2**ext-1)]
+	roots_power, roots = find_roots( alphas_power, g, ext=ext )
+
 	large = n*n
 	max_d0k0 = 2
 	max_d0k0_param = (0,0,0,0,0)
@@ -282,7 +298,7 @@ if __name__ == "__main__":
 			print("alphas #", i, ": alpha ^", i, "= ", x)
 
 	for g in gens:
-		roots_power, roots = find_roots( x_list, g, base=log_q, ext=log_ext )
+		roots_power, roots = find_roots( x_list, g, ext=log_ext )
 		if len(roots) is not g.order:
 			print("g(x) = ")
 			print(g)
@@ -297,9 +313,9 @@ if __name__ == "__main__":
 
 		print("g(x) = \n", g)
 		print("Roots = ", roots_power)
-		BCH_bound    = find_BCH(    roots_power, n=n, ext=log_ext, verbose=args.verbose )
-		extBCH_bound = find_extBCH( roots_power, n=n, ext=log_ext, verbose=args.verbose )
-		tzeng_bound  = find_tzeng(  roots_power, n=n, ext=log_ext, verbose=args.verbose )
+		BCH_bound    = find_BCH(    g=g, n=n, ext=log_ext, verbose=args.verbose )
+		extBCH_bound = find_extBCH( g=g, n=n, ext=log_ext, verbose=args.verbose )
+		tzeng_bound  = find_tzeng(  g=g, n=n, ext=log_ext, verbose=args.verbose )
 		print("BCH bound    = ", BCH_bound)
 		print("extBCH bound = ", extBCH_bound)
 		print("tzeng bound  = ", tzeng_bound)
