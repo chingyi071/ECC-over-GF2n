@@ -15,10 +15,10 @@ A (5,3) linear block code over GF(2)
 # BCH bound
 ## Usage
 ```
-python3 bound.py --n=5 --q=2 --verbose=1
-python3 bound.py --n=5 --q=4
-python3 bound.py --n=15 --q=2
-python3 bound.py --n=15 --q=4
+python3 bound.py --n=5 --q=2 --verbose
+python3 bound.py --n=5 --q=4 --verbose
+python3 bound.py --n=15 --q=2 --verbose
+python3 bound.py --n=15 --q=4 --verbose
 ```
 ## Flowchart
 Take n=5, q=4 for example
@@ -73,3 +73,60 @@ Take n=5, q=4 for example
     - Tzeng's bound = 4
     - Minimum weight = 4
   
+# (Narrow-sense) BCH Code decoding
+## Usage
+There are several kinds of usage in this BCH decoding code
+1. Use default r(x) and d0
+  - r(x) =  1, 1, 1, 1, 1, 0, 0, 1, 1
+  - d0 = 5
+  ```
+  python3 bch.py --verbose
+  ```
+2. Give r(x) and d0 from command line
+  ```
+  python3 bch.py --rx=111110011 --d0=5 --verbose
+  ```
+
+3. Give c(x) and use default e(x)
+  - e(x) = x^3 + x^2
+  ```
+  python3 bch.py --cx=111010001 --verbose
+  ```
+
+4. Give c(x) and e(x)
+  ```
+  python3 bch.py --cx=111010001 --ex=1100 --verbose
+  ```
+
+## Flowchart
+1. Define r(x).
+2. Find error number v, which is max v such that det(M_v)=0 and M_v is a vxv error spectrum matrix with value M_v\[i\]\[j\] = r(alpha^(i+j)).
+3. Calculate syndrone polynomial s(x), where s_i = r(alpha^i)
+4. Calculate locator polynomial from Berlekamp-Massey Algorithm
+5. Find roots of locator polynomial, which will be error locator
+6. Calculate evaluation polynomial w(x) = sigma(x)\*s(x) mod x^v
+7. Calculate error value Yi from Forney's algorithm
+8. Recover e(x) from error locator pair (X,Y), where e(x) = sum(Yi\*x^(log(Xi)))
+
+## Example
+1. Define r(x). r(x) = x^8 + x^7 + x^6 + x^5 + x^4 + x + 1. From the result, we know that c(x) = x^8 + x^7 + x^6 + x^4 + 1, e(x) = x^5 + 1
+2. Find error number v. There are two non-zero term in e(x) => v=2
+3. Calculate syndrone polynomial s(x), where s_i = r(alpha^i)
+  - s0 = r(a^0) = a^3 + 1
+  - s1 = r(a^1) = a   + 1
+  - s0 = r(a^2) = a^2
+4. Calculate locator polynomial from Berlekamp-Massey Algorithm
+  - From Berlekamp-Massey algorithm, we found that locator polynomial is (a^3+a^2)x^2 + (a^2)x + 1
+5. Find roots of locator polynomial, which will be error locator
+  - Roots #0 = a^2 + a + 1 = a^10 => X = (a^10)^(-1) = a^5
+  - Roots #1 = a^3     + 1 = a^14 => X = (a^14)^(-1) = a^1
+6. Calculate evaluation polynomial w(x) = sigma(x)\*s(x) mod x^v
+  - Evaluation polynomial w(x) = a^2
+7. Calculate error value Yi from Forney's algorithm
+  - Y_0 = w(a^10)/sigma'(a^10) = (a^2)/(a^2) = 1
+  - Y_1 = w(a^14)/sigma'(a^14) = (a^2)/(a^2) = 1
+8. Recover e(x) from error locator pair (X,Y), where e(x) = sum(Yi\*x^(log(Xi)))
+  - E_0 = (1,a^10) => e0(x) = x^5
+  - E_1 = (1,a^14) => e1(x) = x
+  - e(x) = e0(x) + e1(x) = x^5 + x
+9. c(x) = r(x) - e(x) = x^8 + x^7 + x^6 + x^4 + 1
