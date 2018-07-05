@@ -15,10 +15,10 @@ A (5,3) linear block code over GF(2)
 # BCH bound
 ## Usage
 ```
-python3 bound.py --n=5 --q=2 --verbose=1
-python3 bound.py --n=5 --q=4
-python3 bound.py --n=15 --q=2
-python3 bound.py --n=15 --q=4
+python3 bound.py --n=5 --q=2 --verbose
+python3 bound.py --n=5 --q=4 --verbose
+python3 bound.py --n=15 --q=2 --verbose
+python3 bound.py --n=15 --q=4 --verbose
 ```
 ## Flowchart
 Take n=5, q=4 for example
@@ -84,18 +84,18 @@ There are several kinds of usage in this BCH decoding code
   ```
 2. Give r(x) and d0 from command line
   ```
-  python3 bch.py --rx=111110011 --d0=5
+  python3 bch.py --rx=111110011 --d0=5 --verbose
   ```
 
 3. Give c(x) and use default e(x)
   - e(x) = x^3 + x^2
   ```
-  python3 bch.py --cx=111010001
+  python3 bch.py --cx=111010001 --verbose
   ```
 
 4. Give c(x) and e(x)
   ```
-  python3 bch.py --cx=111010001 --ex=1100
+  python3 bch.py --cx=111010001 --ex=1100 --verbose
   ```
 
 ## Flowchart
