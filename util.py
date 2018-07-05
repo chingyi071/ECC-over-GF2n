@@ -112,3 +112,9 @@ def sep( n, max_len, modulo ):
         n = int(n/modulo)
     return a
 
+def show_step( msg, verbose):
+    global step
+    if verbose:
+        print("---")
+        print("Step", step, ":", msg)
+        step += 1
