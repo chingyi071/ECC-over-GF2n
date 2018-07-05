@@ -1,6 +1,6 @@
 import numpy as np
 import GFn
-from util import gf2_remainder, fit_gfn, sep, show_step
+from util import gf2_remainder, fit_gfn, sep, step_msg_manager
 from fractions import gcd
 import math
 import argparse
@@ -104,8 +104,7 @@ if __name__ == "__main__":
 	# bm3(c_int,len(c_list))
 	# Berlekamp_Massey([c for c in reversed(c_list)])
 	# ddd
-	global step
-	step = 1
+	step = step_msg_manager()
 
 	parser = argparse.ArgumentParser(description="Flip a switch by setting a flag")
 	parser.add_argument('--verbose', action='store_true')
@@ -125,11 +124,11 @@ if __name__ == "__main__":
 	log_q = int(math.log2(q))
 	log_ext = m * log_q
 
-	zero_q,   one_q,   alpha_q = GFn.gen_zero_one_alpha_overGFq(q)
+	zero_q,   one_q,   alpha_q   = GFn.gen_zero_one_alpha_overGFq(q)
 	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**log_ext)
 
 	# Setting received polynomial r(x)
-	show_step("Define received polynomial r(x)", verbose=args.verbose)
+	step.show("Define received polynomial r(x)", verbose=args.verbose)
 	if args.rx is not None:
 		r_int  = [int(s) for s in args.rx]
 		r_poly = np.poly1d(GFn.intlist_to_gfpolylist( r_int, log_q ))
@@ -198,8 +197,9 @@ if __name__ == "__main__":
 			print("Given designed minimum distance d0 = ", d0)
 
 	# Find error number v
-	show_step("Find error number v", verbose=args.verbose)
-	if args.v is None:
+	step.show("Find error number v", verbose=args.verbose)
+	if args.v is not None: v = args.v
+	else:
 		if args.verbose:
 			print("No given error number v")
 		for test_w in range( int(d0/2), -1, -1 ):
@@ -211,14 +211,11 @@ if __name__ == "__main__":
 				v = test_w
 				break
 			# print("test_w = ", test_w, ", det = ", det)
-
-	else:
-		v = args.v
 	if args.verbose:
 		print("Error number v = ", v)
 
 	# Calculate syndrone poly s(x)
-	show_step("Calculate syndrone poly s(x)", verbose=args.verbose)
+	step.show("Calculate syndrone poly s(x)", verbose=args.verbose)
 	syndrones = []
 	for i in range(0,3):
 		si = np.polyval( r_ext, alpha_ext.power(b0+i))
@@ -231,11 +228,11 @@ if __name__ == "__main__":
 		print("s(x) = \n", sx)
 
 	# Calculate locator polynomial
-	show_step("Calculate locator polynomial", verbose=args.verbose )
+	step.show("Calculate locator polynomial", verbose=args.verbose )
 	loc_poly = Berlekamp_Massey( syndrones, verbose=args.verbose )
 
 	# Obtain error locator from locator polynomial
-	show_step("Calculate error locator from locator polynomial", verbose=args.verbose)
+	step.show("Calculate error locator from locator polynomial", verbose=args.verbose)
 	loc_Xs = []
 	alpha_powers = [alpha_ext.power(i) for i in range(q**m-1)]
 	roots_power, roots = find_roots( alpha_powers, loc_poly, ext=log_ext )
@@ -249,7 +246,7 @@ if __name__ == "__main__":
 
 
 	# Evaluation polynomial calculation: eva_poly = [s(x) * sigma(x)] % x^v
-	show_step("Calculate evaluation polynomial", verbose=args.verbose)
+	step.show("Calculate evaluation polynomial", verbose=args.verbose)
 	product_sx_sigmax = np.polymul(sx, loc_poly)
 	x_times_v = np.poly1d([one_ext] + [zero_ext]*v)
 	eva = GFn.gfn_array_modulo( product_sx_sigmax.c, x_times_v)
@@ -263,7 +260,7 @@ if __name__ == "__main__":
 
 	# Forney's algorithm
 	loc_pair = []
-	show_step("Calculate Yi", verbose=args.verbose)
+	step.show("Calculate Yi", verbose=args.verbose)
 	for i, X in enumerate(loc_Xs):
 		w = np.polyval(eva_poly, X)
 
@@ -278,7 +275,7 @@ if __name__ == "__main__":
 			print("#", i, ": Yi = w(", X, ")/sigma'(", X, ") = ", w, "/", sigma, " = ", Y )
 
 	# Generating e(x) from locator pair
-	show_step("Generating e(x) from locator pair", verbose=args.verbose)
+	step.show("Generating e(x) from locator pair", verbose=args.verbose)
 	if args.verbose:
 		print("loc_pair = ", loc_pair)
 		try:
