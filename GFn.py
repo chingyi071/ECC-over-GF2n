@@ -248,6 +248,14 @@ class GFn_poly:
     def derivative(self):
         return GFn_poly(np.polyder(self.value))
 
+    def map_to( self, trg ):
+        table = gf_map( self.value[0].nbit, trg )
+        gen_gfm_coeffs = []
+        for b in self.value:
+            gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
+            gen_gfm_coeffs.append( gen_gfm_coeff )
+        return GFn_poly(gen_gfm_coeffs)
+
 
 def intlist_to_gfpolylist( int_list, m ):
     return [GFn(g,m) for g in int_list]

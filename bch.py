@@ -62,14 +62,6 @@ def determinant( M ):
 		det += product
 	return det
 
-def poly_map( poly, src, trg ):
-	table = GFn.gf_map( src, trg )
-	gen_gfm_coeffs = []
-	for b in poly:
-		gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
-		gen_gfm_coeffs.append( gen_gfm_coeff )
-	return GFn.GFn_poly(gen_gfm_coeffs)
-
 def check_generalized_newtons_identities( poly, loc_pair ):
 	j = 2
 	print("poly = ", poly)
@@ -123,10 +115,8 @@ if __name__ == "__main__":
 	# Setting received polynomial r(x)
 	step.show("Define received polynomial r(x)", verbose=args.verbose)
 	if args.rx is not None:
-		# # r_int  = [int(s) for s in args.rx]
-		# # r_poly = GFn.GFn_poly(r_int,log_q)
 		r_poly = GFn.GFn_poly( args.rx, log_q )
-		r_ext  = poly_map( r_poly, log_q, log_ext )
+		r_ext  = r_poly.map_to(log_ext)
 		if args.d0 is None:
 			print("Given received polynomial should provide designed d0")
 			raise ValueError
@@ -138,9 +128,8 @@ if __name__ == "__main__":
 	# No r(x) defined, setting codeword polynomial c(x) and error poly e(x)
 	elif args.cx is not None:
 		# Setting codeword polynomial c(x)
-		c_int = [int(s) for s in args.cx]
-		c_poly = GFn.GFn_poly(c_int,log_q)
-		c_ext = poly_map( c_poly, log_q, log_ext )
+		c_poly = GFn.GFn_poly( args.cx, log_q )
+		c_ext = c_poly.map_to(log_ext)
 		d0 = bound.find_tzeng(  g=c_ext, n=n, ext=log_ext )
 		if args.verbose:
 			print("codeword polynomial = ", c_poly.c, "\n", c_poly)
@@ -148,9 +137,8 @@ if __name__ == "__main__":
 
 		# Setting error polynomial e(x)
 		if args.ex is not None:
-			e_int = [int(s) for s in args.ex]
-			e_poly = GFn.GFn_poly(e_int,log_q)
-			e_ext = poly_map( e_poly, log_q, log_ext )
+			e_poly = GFn.GFn_poly( args.ex, log_q )
+			e_ext = e_poly.map_to(log_ext)
 			if args.verbose:
 				print("error polynomial = ", e_poly.c, "\n", e_poly)
 			r_ext = c_ext + e_ext
@@ -158,7 +146,7 @@ if __name__ == "__main__":
 		else:
 			e_int = [1,1,0,0]
 			e_poly = GFn.GFn_poly(e_int,log_q)
-			e_ext = poly_map( e_poly, log_q, log_ext )
+			e_ext = e_poly.map_to(log_ext)
 			if args.verbose:
 				print("error polynomial = ", e_poly.c, "\n", e_poly)
 			r_ext = c_ext + e_ext
@@ -184,7 +172,7 @@ if __name__ == "__main__":
 	else:
 		r_int  = [1,1,1,1,1,0,0,1,1]
 		r_poly = GFn.GFn_poly(r_int,log_q)
-		r_ext  = poly_map( r_poly, log_q, log_ext )
+		r_ext  = r_poly.map_to(log_ext)
 		print("r_ext = ", r_ext, r_ext[0])
 		d0 = 5
 		if args.verbose:
@@ -224,7 +212,6 @@ if __name__ == "__main__":
 		print("No error")
 		print("c_recovered = \n", r_ext)
 		exit()
-		ddd
 
 	if args.verbose:
 		print("Syndrones")
