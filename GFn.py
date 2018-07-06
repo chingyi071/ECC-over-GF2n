@@ -74,6 +74,7 @@ class GFn:
             return GFn( fit_gfn(value, self.nbit), self.nbit)
 
         if type(a) is not type(GFn(0,1)):
+            print("type is", type(a))
             raise ValueError( str(a) + "is neither GFn or np.array")
 
         # Shift multiplicend and add it to psum
@@ -165,6 +166,88 @@ class GFn:
         for i in range(0,2**self.nbit):
             if int( GFn(i,self.nbit) * self )==1:
                 return GFn(i,self.nbit)
+
+class GFn_poly:
+    def __init__( self, value, nbit=None ):
+        if type(value) is int:
+            self.value = np.poly1d([GFn(value,nbit)])
+            self.nbit = nbit
+        elif type(value) is type(GFn(0,1)):
+            self.value = np.poly1d([value])
+            self.nbit = value.nbit
+        elif type(value) is type(np.array([])):
+            self.value = np.poly1d(value)
+            self.nbit = value[0].nbit
+        elif type(value) is list and type(value[0]) is int:
+            self.value = np.poly1d(intlist_to_gfpolylist( value, nbit ))
+            self.nbit = nbit
+        elif type(value) is list and type(value[0]) is type(GFn(0,1)):
+            self.value = np.poly1d(value)
+            self.nbit = value[0].nbit
+        elif type(value) is type(np.poly1d([])) and type(value[0]) is type(GFn(0,1)):
+            self.value = value
+            self.nbit = value[0].nbit
+        elif type(value) is type(np.poly1d([])):
+            value_int = [int(s) for s in value]
+            value_gfn = intlist_to_gfpolylist( value_int, nbit )
+            self.value = np.poly1d(value_gfn)
+            self.nbit = nbit
+        elif type(value) is str:
+            value_int  = [int(s) for s in value]
+            self.value = np.poly1d(intlist_to_gfpolylist( value_int, nbit ))
+            self.nbit = nbit
+        else:
+            print("type is ", type(value))
+            raise ValueError
+
+        self.c = self.value.c
+        self.order = self.value.order
+
+    def __repr__( self ):
+        return str(self.value)
+
+    def __iter__( self ):
+        return iter(self.value)
+
+    def __add__( self, b ):
+        if type(b) is type(GFn_poly(0,1)):
+            return GFn_poly( np.polyadd(self.value,b.value) )
+        else:
+            print("type is ", type(b))
+            raise ValueError
+
+    def __mul__( self, b ):
+        if type(b) is type(np.poly1d([])):
+            return GFn_poly( np.polymul(self.value,b), self.nbit )
+        elif type(b) is type(GFn_poly(0,1)):
+            return GFn_poly( np.polymul(self.value,b.value), self.nbit )
+        elif type(b) is float:
+            if b == 0.0: return GFn_poly(0, self.nbit)
+            else: raise ValueError
+        elif type(b) is type(GFn(0,1)):
+            return GFn_poly(self.value*b)
+        else:
+            print("Target type is ", type(b), b)
+            raise ValueError
+
+    def __mod__( self, mod ):
+        return GFn_poly(gfn_array_modulo( self.value.c, mod.value.c ))
+
+    def __lshift__(self, shift):
+        zero = GFn(0,self.nbit)
+        one  = GFn(1,self.nbit)
+        poly = np.polymul(self.value,np.poly1d([one]+[zero]*shift))
+        return GFn_poly(poly)
+
+    def __call__(self, a):
+        return np.polyval( self.value, a )
+
+    def __getitem__( self, a ):
+        return self.value[a]
+
+    def derivative(self):
+        return GFn_poly(np.polyder(self.value))
+
 
 def intlist_to_gfpolylist( int_list, m ):
     return [GFn(g,m) for g in int_list]

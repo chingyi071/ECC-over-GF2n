@@ -32,7 +32,7 @@ def find_roots( x_list, g, ext ):
 		g_ext = g
 
 	for i, x in enumerate(x_list):
-		if x.is_root( g_ext ):
+		if int(g_ext(x)) == 0:
 			index.append(i)
 			roots.append(x)
 	return index, roots
