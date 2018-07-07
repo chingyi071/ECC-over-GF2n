@@ -41,6 +41,27 @@ def Berlekamp_Massey( syndrones, verbose=0 ):
 		print("Locator polynomial = \n", c)
 	return c
 
+def Euclidean( sx, v, verbose=0 ):
+	tx = GFn.GFn_poly(1,log_ext) << 2*v
+	A = [[GFn.GFn_poly(1,log_ext),GFn.GFn_poly(0,log_ext)], [GFn.GFn_poly(0,log_ext),GFn.GFn_poly(1,log_ext)]]
+	while sx.order >= v:
+		qx, rx = tx / sx
+		sx, tx = rx, sx
+		lmat = [[qx, GFn.GFn_poly(1,log_ext)], [GFn.GFn_poly(1,log_ext),GFn.GFn_poly(0,log_ext)]]
+		A[0][0], A[0][1], A[1][0], A[1][1] = \
+			lmat[0][0]*A[0][0]+lmat[0][1]*A[1][0],\
+			lmat[0][0]*A[0][1]+lmat[0][1]*A[1][1],\
+			lmat[1][0]*A[0][0]+lmat[1][1]*A[1][0],\
+			lmat[1][0]*A[0][1]+lmat[1][1]*A[1][1]
+	lamda = A[0][0](0).inverse()
+	sigma = A[0][0] * lamda
+	eva_poly = sx * lamda
+	if verbose:
+		print("Euclidean Algorithm")
+		print("Locator polynomial = \n", sigma)
+		print("Evaluation polynomial = \n", eva_poly)
+	return sigma, eva_poly
+
 def get_Mw( r, w ):
 	e_arr = []
 	for i in range( 0, w ):
@@ -96,10 +117,11 @@ if __name__ == "__main__":
 	parser.add_argument('--ex')
 	parser.add_argument('--cx')
 	parser.add_argument('--rx')
+	parser.add_argument('--epoly', default='berlekamp')
 	parser.add_argument('--d0', type=int)
-	parser.add_argument('--n', type=int, default=15)
-	parser.add_argument('--q', type=int, default=4)
-	parser.add_argument('--v', type=int)
+	parser.add_argument('--n',  type=int, default=15)
+	parser.add_argument('--q',  type=int, default=4)
+	parser.add_argument('--v',  type=int)
 	args = parser.parse_args()
 
 	n = args.n
@@ -119,7 +141,7 @@ if __name__ == "__main__":
 		r_ext  = r_poly.map_to(log_ext)
 		if args.d0 is None:
 			print("Given received polynomial should provide designed d0")
-			raise ValueError
+			raise ValueError("Given received polynomial should provide designed d0")
 		d0 = args.d0
 		if args.verbose:
 			print("Given received polynomial = \n", r_poly)
@@ -173,7 +195,6 @@ if __name__ == "__main__":
 		r_int  = [1,1,1,1,1,0,0,1,1]
 		r_poly = GFn.GFn_poly(r_int,log_q)
 		r_ext  = r_poly.map_to(log_ext)
-		print("r_ext = ", r_ext, r_ext[0])
 		d0 = 5
 		if args.verbose:
 			print("Given received polynomial = \n", r_ext)
@@ -203,7 +224,7 @@ if __name__ == "__main__":
 	# Calculate syndrone poly s(x)
 	step.show("Calculate syndrone poly s(x)", verbose=args.verbose)
 	syndrones = []
-	for i in range(0,v+1):
+	for i in range(0,2*v):
 		si = r_ext(alpha_ext.power(b0+i))
 		syndrones = [si] + syndrones
 	sx = GFn.GFn_poly(syndrones)
@@ -219,9 +240,32 @@ if __name__ == "__main__":
 			print("\ts"+str(i), " = ", s)
 		print("s(x) = \n", sx)
 
-	# Calculate locator polynomial
-	step.show("Calculate locator polynomial", verbose=args.verbose )
-	loc_poly = Berlekamp_Massey( syndrones, verbose=args.verbose )
+	if args.epoly == 'berlekamp':
+
+		# Calculate locator polynomial
+		step.show("Calculate locator polynomial", verbose=args.verbose )
+		loc_poly = Berlekamp_Massey( syndrones, verbose=args.verbose )
+
+		# Evaluation polynomial calculation: eva_poly = [s(x) * sigma(x)] % x^v
+		step.show("Calculate evaluation polynomial", verbose=args.verbose)
+		product_sx_sigmax = sx * loc_poly
+		x_times_v = GFn.GFn_poly(1,log_ext) << v
+		eva_poly = product_sx_sigmax % x_times_v
+		if args.verbose:
+			print("evaluation polynomial = \n", eva_poly)
+			try:
+				print("given evaluation polynomial = \n", given_eva)
+			except NameError:
+				print("No given evaluation polynomial")
+
+	elif args.epoly == 'euclidean':
+		# Calculate locator polynomial and evaluation polynomial
+		step.show("Calculate locator polynomial and evaluation polynomial", verbose=args.verbose )
+		loc_poly, eva_poly = Euclidean( sx, v, verbose=args.verbose)
+
+	else:
+		raise ValueError("Undefined error polynomial method")
+
 
 	# Obtain error locator from locator polynomial
 	step.show("Calculate error locator from locator polynomial", verbose=args.verbose)
@@ -235,18 +279,6 @@ if __name__ == "__main__":
 		loc_Xs.append(root)
 		if args.verbose:
 			print("\tRoots #", i, ":", root, "= alpha ^", root_power, " => X = alpha ^", q**m-1 - root_power)
-
-	# Evaluation polynomial calculation: eva_poly = [s(x) * sigma(x)] % x^v
-	step.show("Calculate evaluation polynomial", verbose=args.verbose)
-	product_sx_sigmax = sx * loc_poly
-	x_times_v = GFn.GFn_poly(1,log_ext) << v
-	eva_poly = product_sx_sigmax % x_times_v
-	if args.verbose:
-		print("evaluation polynomial = \n", eva_poly)
-		try:
-			print("given evaluation polynomial = \n", given_eva)
-		except NameError:
-			print("No given evaluation polynomial")
 
 	# Forney's algorithm
 	loc_pair = []

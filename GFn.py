@@ -6,8 +6,11 @@ class GFn:
         self.nbit = nbit
         # print('value = ', value)
         if np.isscalar(value):
-            bin_list = [int(i) for i in bin(value)[2:]]
-            value_array = np.flip( [0]*(nbit-len(bin_list)) + bin_list, axis=0 )
+            if value == 0:
+                value_array = np.array([0]*nbit)
+            else:
+                bin_list = [int(i) for i in bin(value)[2:]]
+                value_array = np.flip( [0]*(nbit-len(bin_list)) + bin_list, axis=0 )
 
         elif len(np.shape(value)) is 1:
             if np.shape(value)[0] > nbit:
@@ -202,6 +205,10 @@ class GFn_poly:
 
         self.c = self.value.c
         self.order = self.value.order
+        if type(self.value[0]) is not type(GFn(0,1)) and not self.value[0] == 0.0:
+            print("self.value[0] is not 0.0 = ", self.value[0] == 0.0)
+            print("value[0] = ", self.value[0])
+            raise ValueError
 
     def __repr__( self ):
         return str(self.value)
@@ -211,7 +218,7 @@ class GFn_poly:
 
     def __add__( self, b ):
         if type(b) is type(GFn_poly(0,1)):
-            return GFn_poly( np.polyadd(self.value,b.value) )
+            return GFn_poly( np.polyadd(self.value,b.value), self.nbit )
         else:
             print("type is ", type(b))
             raise ValueError
@@ -245,6 +252,15 @@ class GFn_poly:
     def __getitem__( self, a ):
         return self.value[a]
 
+    def __eq__( self, b ):
+        if self.value.order is not b.value.order:
+            return False
+        else:
+            for c0, c1 in zip( self.value.c, b.value.c ):
+                if not c0 == c1:
+                    return False
+            return True
+
     def derivative(self):
         return GFn_poly(np.polyder(self.value))
 
@@ -255,6 +271,13 @@ class GFn_poly:
             gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
             gen_gfm_coeffs.append( gen_gfm_coeff )
         return GFn_poly(gen_gfm_coeffs)
+
+    def __truediv__( self, b ):
+        leader_coeff = self.value.c[0] * b.value.c[0].inverse()
+        leader_order = self.value.order - b.value.order
+        qx = (GFn_poly([leader_coeff]) << leader_order)
+        rx = self + qx*b
+        return qx, rx
 
 
 def intlist_to_gfpolylist( int_list, m ):
