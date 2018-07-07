@@ -42,19 +42,18 @@ def Berlekamp_Massey( syndrones, verbose=0 ):
 	return c
 
 def Euclidean( sx, v, verbose=0 ):
-	tx = GFn.GFn_poly(1,log_ext) << 2*v
-	A = [[GFn.GFn_poly(1,log_ext),GFn.GFn_poly(0,log_ext)], [GFn.GFn_poly(0,log_ext),GFn.GFn_poly(1,log_ext)]]
+	tx = GFn.GFn_poly(1,log_ext) << (2*v)
+
+	A00, A01 = GFn.GFn_poly(1,log_ext), GFn.GFn_poly(0,log_ext)
+	A10, A11 = GFn.GFn_poly(0,log_ext), GFn.GFn_poly(1,log_ext)
+
 	while sx.order >= v:
-		qx, rx = tx / sx
+		qx, rx = tx / sx, tx % sx
 		sx, tx = rx, sx
-		lmat = [[qx, GFn.GFn_poly(1,log_ext)], [GFn.GFn_poly(1,log_ext),GFn.GFn_poly(0,log_ext)]]
-		A[0][0], A[0][1], A[1][0], A[1][1] = \
-			lmat[0][0]*A[0][0]+lmat[0][1]*A[1][0],\
-			lmat[0][0]*A[0][1]+lmat[0][1]*A[1][1],\
-			lmat[1][0]*A[0][0]+lmat[1][1]*A[1][0],\
-			lmat[1][0]*A[0][1]+lmat[1][1]*A[1][1]
-	lamda = A[0][0](0).inverse()
-	sigma = A[0][0] * lamda
+		A00, A01, A10, A11 = qx*A00+A10, qx*A01+A11, A00, A01
+
+	lamda = A00(0).inverse()
+	sigma = A00 * lamda
 	eva_poly = sx * lamda
 	if verbose:
 		print("Euclidean Algorithm")
@@ -240,6 +239,8 @@ if __name__ == "__main__":
 			print("\ts"+str(i), " = ", s)
 		print("s(x) = \n", sx)
 
+
+	# Calculate locator polynomial and evaluation polynomial
 	if args.epoly == 'berlekamp':
 
 		# Calculate locator polynomial

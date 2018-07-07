@@ -237,8 +237,18 @@ class GFn_poly:
             print("Target type is ", type(b), b)
             raise ValueError
 
+    def __truediv__( self, b ):
+        leader_coeff = self.value.c[0] * b.value.c[0].inverse()
+        leader_order = self.value.order - b.value.order
+        qx = (GFn_poly([leader_coeff]) << leader_order)
+        return qx
+
     def __mod__( self, mod ):
-        return GFn_poly(gfn_array_modulo( self.value.c, mod.value.c ))
+        leader_coeff = self.value.c[0] * mod.value.c[0].inverse()
+        leader_order = self.value.order - mod.value.order
+        qx = (GFn_poly([leader_coeff]) << leader_order)
+        rx = self + qx*mod
+        return rx
 
     def __lshift__(self, shift):
         zero = GFn(0,self.nbit)
@@ -271,13 +281,6 @@ class GFn_poly:
             gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
             gen_gfm_coeffs.append( gen_gfm_coeff )
         return GFn_poly(gen_gfm_coeffs)
-
-    def __truediv__( self, b ):
-        leader_coeff = self.value.c[0] * b.value.c[0].inverse()
-        leader_order = self.value.order - b.value.order
-        qx = (GFn_poly([leader_coeff]) << leader_order)
-        rx = self + qx*b
-        return qx, rx
 
 
 def intlist_to_gfpolylist( int_list, m ):
