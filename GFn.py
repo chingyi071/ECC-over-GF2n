@@ -241,6 +241,9 @@ class GFn_poly:
         leader_coeff = self.value.c[0] * b.value.c[0].inverse()
         leader_order = self.value.order - b.value.order
         qx = (GFn_poly([leader_coeff]) << leader_order)
+        rx = self + qx*b
+        while rx.order >= b.value.order:
+            qx, rx = qx+rx/b, rx%b
         return qx
 
     def __mod__( self, mod ):
@@ -248,6 +251,8 @@ class GFn_poly:
         leader_order = self.value.order - mod.value.order
         qx = (GFn_poly([leader_coeff]) << leader_order)
         rx = self + qx*mod
+        while rx.order >= mod.value.order:
+            qx, rx = qx+rx/mod, rx%mod
         return rx
 
     def __lshift__(self, shift):

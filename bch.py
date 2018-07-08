@@ -107,6 +107,23 @@ def check_eva_poly( loc_pair, b0=1 ):
 		eva_poly += product * sca
 	return eva_poly
 
+def chien( x_list, g, ext ):
+	index = []
+	roots  = []
+
+	terms = []
+	for i, coef in enumerate(reversed(g.c)):
+		terms.append(coef)
+
+	for p in range(1, 2**ext-1):
+		for i, coef in enumerate(reversed(g.c)):
+			terms[i] *= alpha_ext.power(i)
+		value = sum(terms)
+		if value.iszero():
+			index.append(p)
+			roots.append(alpha_ext.power(p))
+	return index, roots
+
 if __name__ == "__main__":
 
 	step = step_msg_manager()
@@ -116,7 +133,8 @@ if __name__ == "__main__":
 	parser.add_argument('--ex')
 	parser.add_argument('--cx')
 	parser.add_argument('--rx')
-	parser.add_argument('--epoly', default='berlekamp')
+	parser.add_argument('--epoly',    default='berlekamp')
+	parser.add_argument('--findroot', default='chien')
 	parser.add_argument('--d0', type=int)
 	parser.add_argument('--n',  type=int, default=15)
 	parser.add_argument('--q',  type=int, default=4)
@@ -272,7 +290,13 @@ if __name__ == "__main__":
 	step.show("Calculate error locator from locator polynomial", verbose=args.verbose)
 	loc_Xs = []
 	alpha_powers = [alpha_ext.power(i) for i in range(q**m-1)]
-	roots_power, roots = find_roots( alpha_powers, loc_poly, ext=log_ext )
+	if args.findroot == 'brute-force':
+		roots_power, roots = find_roots( alpha_powers, loc_poly, ext=log_ext )
+	elif args.findroot == 'chien':
+		roots_power, roots = chien( alpha_powers, loc_poly, ext=log_ext )
+	else:
+		raise ValueError("Undefined finding root method")
+
 	if args.verbose:
 		print("Roots of locator polynomial: ", roots)
 	for i, root_power_root in enumerate(zip(roots_power, roots)):
