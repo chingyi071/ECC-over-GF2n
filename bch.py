@@ -4,9 +4,7 @@ from util import gf2_remainder, fit_gfn, sep, step_msg_manager
 from fractions import gcd
 import math
 import argparse
-from bound import find_roots
 import bound
-import itertools
 
 def Berlekamp_Massey( syndrones, verbose=0 ):
 	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**syndrones[0].nbit)
@@ -70,18 +68,6 @@ def get_Mw( r, w ):
 		e_arr.append(row)
 	return np.array(e_arr)
 
-def determinant( M ):
-	det = zero_ext
-	for indexs in itertools.permutations(list(range(M.shape[0]))):
-		# print("indexs = ", indexs, type(indexs))
-		# if sign(indexs) > 0:
-		product = one_ext
-		for row, col in enumerate(indexs):
-			product *= M[row][col]
-			# print("product *= index[", row, "][", col, "]")
-		det += product
-	return det
-
 def check_generalized_newtons_identities( poly, loc_pair ):
 	j = 2
 	print("poly = ", poly)
@@ -107,22 +93,6 @@ def check_eva_poly( loc_pair, b0=1 ):
 		eva_poly += product * sca
 	return eva_poly
 
-def chien( x_list, g, ext ):
-	index = []
-	roots  = []
-
-	terms = []
-	for i, coef in enumerate(reversed(g.c)):
-		terms.append(coef)
-
-	for p in range(1, 2**ext-1):
-		for i, coef in enumerate(reversed(g.c)):
-			terms[i] *= alpha_ext.power(i)
-		value = sum(terms)
-		if value.iszero():
-			index.append(p)
-			roots.append(alpha_ext.power(p))
-	return index, roots
 
 if __name__ == "__main__":
 
@@ -226,7 +196,7 @@ if __name__ == "__main__":
 		v = None
 		for test_w in range( int(d0/2), -1, -1 ):
 			Mw = get_Mw( r_ext, test_w )
-			det = determinant(Mw)
+			det = GFn.determinant(Mw)
 			if args.verbose:
 				print("w =", test_w, ", det(Mw) = ", det)
 			if int(det) == 0:
@@ -289,13 +259,7 @@ if __name__ == "__main__":
 	# Obtain error locator from locator polynomial
 	step.show("Calculate error locator from locator polynomial", verbose=args.verbose)
 	loc_Xs = []
-	alpha_powers = [alpha_ext.power(i) for i in range(q**m-1)]
-	if args.findroot == 'brute-force':
-		roots_power, roots = find_roots( alpha_powers, loc_poly, ext=log_ext )
-	elif args.findroot == 'chien':
-		roots_power, roots = chien( alpha_powers, loc_poly, ext=log_ext )
-	else:
-		raise ValueError("Undefined finding root method")
+	roots_power, roots = GFn.finding_roots( loc_poly, ext=log_ext, alpha=alpha_ext, method=args.findroot )
 
 	if args.verbose:
 		print("Roots of locator polynomial: ", roots)

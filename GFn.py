@@ -387,3 +387,56 @@ def weight( f ):
     non_zero_list = [x>0 for x in int_list]
     return sum(non_zero_list)
 
+def finding_roots( g, ext, alpha, method ):
+    index = []
+    roots  = []
+
+    if method == 'chien':
+        terms = []
+        for i, coef in enumerate(reversed(g.c)):
+            terms.append(coef)
+
+        for p in range(1, 2**ext-1):
+            for i, coef in enumerate(reversed(g.c)):
+                terms[i] *= alpha.power(i)
+            value = sum(terms)
+            if value.iszero():
+                index.append(p)
+                roots.append(alpha.power(p))
+    elif method == 'brute-force':
+        alpha_powers = [alpha.power(i) for i in range(2**ext-1)]
+        for i, x in enumerate(alpha_powers):
+            if g(x).iszero():
+                index.append(i)
+                roots.append(x)
+    else:
+        print("method = ", method)
+        raise ValueError()
+
+    return index, roots
+
+def find_roots( x_list, g, ext ):
+    index = []
+    roots  = []
+    base = g[0].nbit
+    if base is not ext:
+        g_ext = poly_map( g, base, ext )
+    else:
+        g_ext = g
+
+    for i, x in enumerate(x_list):
+        if int(g_ext(x)) == 0:
+            index.append(i)
+            roots.append(x)
+    return index, roots
+
+def determinant( M ):
+    import itertools
+    fld = M.flatten()[0].nbit
+    det = GFn(0,fld)
+    for indexs in itertools.permutations(list(range(M.shape[0]))):
+        product = GFn(1,fld)
+        for row, col in enumerate(indexs):
+            product *= M[row][col]
+        det += product
+    return det
