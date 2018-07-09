@@ -19,45 +19,19 @@ def symbol_all( nbit ):
     raise ValueError(err_msg)
 
 class BCJR:
-    def __init__( self, p_mat, b=1 ):
+    def __init__( self, p_mat, vex, edg, b=1 ):
         self.b = b
         self.n = int(p_mat.shape[0])
         self.k = int(p_mat.shape[0])-p_mat.shape[1]
         self.h = self.n - self.k
 
-        symbol_np_arr = np.empty( [int(p_mat.shape[0]), int(p_mat.shape[1])], dtype=GFn.GFn)
-        for x in range(0,p_mat.shape[0]):
-            for y in range(0,p_mat.shape[1]):
-                value = np.array(p_mat[x][y])
-                symbol_np_arr[x][y] = GFn.GFn( value, self.b )
-
-        zero_state = np.array( [GFn.GFn([0]*self.b,self.b)]*self.h )
+        zero_state = np.array( [GFn.GFn([0]*self.b,self.b)]*int(p_mat.shape[1]) )
         self.zero_state = zero_state
-        vex = [[zero_state]]
-        edg = []
-
-        for layer in range(0, self.n):
-            vex_new = []
-            edg_new = []
-            symbol_layer = symbol_np_arr[layer]
-            for v_last in vex[-1]:
-                for symbol in symbol_all(self.b):
-                    # State calculation: s = last + symbol * H[i,:]
-                    add_v   = symbol * symbol_layer + v_last
-
-                    # Create new edge and append it
-                    edge = ( v_last, symbol, add_v )
-                    edg_new.append(edge)
-
-                    # Add this vertice into vertex list if not exist
-                    if not in_list( vex_new, add_v ):
-                        vex_new.append(add_v)
-            vex.append(vex_new)
-            edg.append(edg_new)
         self.vex = vex
         self.edg = edg
 
-    def plot_sections( self, start, end ):
+    def plot_sections( self, position ):
+        start, end = position
         bit_per_state = self.n - self.k
         edges = []
         pos_dict = {}
