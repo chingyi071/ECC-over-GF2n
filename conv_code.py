@@ -3,6 +3,7 @@ import util
 import numpy as np
 from math import log2
 from BCJR import BCJR, symbol_all
+import argparse
 
 def parse_golden( csv_name, logq, m, n ):
 	output_csv = util.read_csv(csv_name)[0]
@@ -14,14 +15,16 @@ def parse_golden( csv_name, logq, m, n ):
 	golden_snap = np.array(golden_list)
 	for i, o in enumerate(np.swapaxes(golden_snap,0,1)):
 		print("output[", i, "] = ", o[::-1], "\n", GFn.GFn_poly( o[::-1], logq) )
+	print("---")
 	return golden_snap, golden_snap.shape[0]
 
 def parse_gens( csv_name, logq, k, n, m ):
 	g_csv = util.read_csv(csv_name)
 	if not np.array_equal(g_csv.shape, (k,n)):
-		print("g_csv.shape = ", g_csv.shape)
-		print("Ideal is ", k, n)
-		raise ValueError
+		err_msg = "Expected generators is (" + str(k) + ',' + str(n) + '), "' + csv_name + '" is ' + str(g_csv.shape)
+		# print("g_csv.shape = ", g_csv.shape)
+		# print("Ideal is ", k, n)
+		raise ValueError(err_msg)
 	gens = np.empty( shape=(k,n), dtype=object )
 	for i in range( g_csv.shape[0] ):
 		for j in range( g_csv.shape[1] ):
@@ -34,13 +37,25 @@ def parse_gens( csv_name, logq, k, n, m ):
 			coeffs = util.zero_padding_front(gens[kk][nn].c, m, zero=GFn.GFn(0,logq))
 			for mm in range(m):
 				weights[nn][mm][kk] = coeffs[m-mm-1]
+	print("---")
 	return gens, weights
 
 def main():
-	k = 1 # num of input
-	n = 2 # num of output
-	m = 3
-	q = 2
+
+	parser = argparse.ArgumentParser(description="Flip a switch by setting a flag")
+	parser.add_argument('--verbose', action='store_true')
+	parser.add_argument('--out_seq', default="conv_csv/output.csv", help="File path of output sequence")
+	parser.add_argument('--gen', default="conv_csv/g.csv", help="File path of generators")
+	parser.add_argument('--k', default=1, type=int, help='Number of input')
+	parser.add_argument('--n', default=2, type=int, help='Number of output')
+	parser.add_argument('--m', default=3, type=int, help='Number of memories')
+	parser.add_argument('--q', default=2, type=int, help='GF(q)')
+	args = parser.parse_args()
+
+	k = args.k # num of input
+	n = args.n # num of output
+	m = args.m
+	q = args.q
 	N = 3
 	logq = int(log2(q))
 
@@ -53,7 +68,7 @@ def main():
 		poss_input.append([ GFn.GFn(x,logq) for x in util.sep( int_value, k, q) ])
 
 	# Read given generators and output sequence from csv
-	golden_snap, output_len = parse_golden("conv_csv/output.csv", logq=logq, m=m, n=n)
+	golden_snap, output_len = parse_golden( args.out_seq, logq=logq, m=m, n=n)
 	gens, weights = parse_gens("conv_csv/g.csv", logq=logq, k=k, n=n, m=m)
 
 	# Initialize vertexs and edges of the graph
@@ -173,7 +188,7 @@ def main():
 		print("Output #", o_index)
 		
 		for i, g in enumerate(gens):
-			print("input_predicted_poly[", i, "] = ", input_predicted_poly[i].c)
+			print("input_predicted_poly[", i, "] = ", input_predicted[i][::-1])
 			print("g[", i, "] = ", g.c)
 			o_predicted_poly += input_predicted_poly[i] * g
 
