@@ -48,11 +48,6 @@ class BCJR:
             for e in e_layer:
                 v0, a, v1 = e
                 edges.append((v2str(v0,num_layer), v2str(v1,num_layer+1), {'weight':int(a)}))
-        print("pos_dict = ", pos_dict)
-        for v_layer in self.vex:
-            print("vex = ", v_layer)
-        for e_layer in edges:
-            print("edg = ", e_layer)
 
         G = nx.Graph()
         G.add_edges_from(edges)

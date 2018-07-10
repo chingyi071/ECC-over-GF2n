@@ -136,3 +136,11 @@ class step_msg_manager:
             print("---")
             print("Step", self.step, ":", msg)
             self.step += 1
+
+def zero_padding_front( arr, n, zero=0 ):
+    if len(np.shape(arr)) is not 1:
+        raise ValueError
+    num_zero = n-arr.size
+    if num_zero is 0: return arr
+    return np.concatenate(([zero]*num_zero,arr),axis=0)
+
