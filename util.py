@@ -30,8 +30,24 @@ def arr2bistr( arr, dim ):
 
 def in_list( vec_list, target ):
     for vec in vec_list:
+        # print("Compare ", vec, target,  np.array_equal(vec,target))
         if np.array_equal(vec,target): return True
     return False
+
+def read_csv( filename ):
+    with open( filename, newline='') as f:
+        reader = csv.reader(f)
+        symbols = []
+        for row in reader:
+            rows = []
+            for symbol in row:
+                # symbol_str = []
+                # for gf in symbol:
+                #     symbol_str.append(int(gf))
+                # rows.append(symbol_str)
+                rows.append(int(symbol))
+            symbols.append(rows)
+    return np.array(symbols)
 
 def read_mat( filename ):
     with open( filename, newline='') as f:
