@@ -134,8 +134,11 @@ There are several kinds of usage in this BCH decoding code
 # Convolution code decoder
 ## Usage
 ```
-python3 conv_code.py
+python3 conv_code.py --gen=conv_csv/g.csv --out_seq=conv_csv/output.csv 
 ```
 ```
-python3 conv_code.py --q=4
+python3 conv_code.py --gen=conv_csv/g.csv --out_seq=conv_csv/output.csv --q=4
+```
+```
+python3 conv_code.py --gen=conv_csv/g2.csv --out_seq=conv_csv/output.csv --k=2
 ```
