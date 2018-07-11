@@ -13,36 +13,12 @@ def find_m( n, q ):
 		m += 1
 		qm *= q
 
-def poly_map( poly, src, trg ):
-	table = GFn.gf_map( src, trg )
-	gen_gfm_coeffs = []
-	for b in poly:
-		gen_gfm_coeff = [s[1] for s in table if s[0]==b][0]
-		gen_gfm_coeffs.append( gen_gfm_coeff )
-	gen_gfm = np.poly1d(gen_gfm_coeffs)
-	return gen_gfm
-
-def find_roots( x_list, g, ext ):
-	index = []
-	roots  = []
-	base = g[0].nbit
-	if base is not ext:
-		g_ext = poly_map( g, base, ext )
-	else:
-		g_ext = g
-
-	for i, x in enumerate(x_list):
-		if int(g_ext(x)) == 0:
-			index.append(i)
-			roots.append(x)
-	return index, roots
-
 def get_min_weight( g, n, verbose=0 ):
 
-	k = n-len(g)
+	k = n-(g.order)
 	nbit = g[0].nbit
 	num_of_info = (2**nbit)**k
-	print("n,g,k,num_of_info = ", n,len(g),k,num_of_info)
+	print("n,g,k,num_of_info = ", n,g.order,k,num_of_info)
 
 	if verbose:
 		print("reducted g = ", g)
@@ -54,18 +30,24 @@ def get_min_weight( g, n, verbose=0 ):
 		bin_list_aligned = sep( value, n, 2**nbit)
 		# print("(", bin_list_aligned, bin_list_aligned2, ")")
 		gf_list = [ GFn.GFn(s,nbit) for s in bin_list_aligned ]
-		symbols.append( gf_list )
+		symbols.append( GFn.GFn_poly(gf_list) )
 
 	# Find min weight in the product of g(x) and all symbols
 	min_weight = n+1
+	if not len(symbols) == (num_of_info-1):
+		print("symbols = ", len(symbols))
+		print("num_info-1 = ", num_of_info-1)
+		raise Exception
 	for i, s in enumerate(symbols):
-		y = np.polymul(s,g)
-		weight = GFn.weight(y)
+		y = s*g
+		weight = y.weight()
+		# y = np.polymul(s,g)
+		# weight = GFn.weight(y)
 		if weight < min_weight:
 			min_weight = weight
 			min_codeword = s
 		if verbose:
-			print("Info #", i, ":", s)
+			print("Info #", i, ":")
 			print("y = symbol * g(x) = ")
 			print(y)
 			print("weight = ", weight)
@@ -78,7 +60,7 @@ def find_BCH( n, ext, g, verbose=False ):
 
 	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**ext)
 	alphas_power = [alpha_ext.power(i) for i in range(2**ext-1)]
-	roots_power, roots = find_roots( alphas_power, g, ext=log_ext )
+	roots_power, roots = GFn.finding_roots( g, ext=log_ext, alpha=alpha_ext )
 
 	max_d0 = 2
 	large = n*n
@@ -96,7 +78,7 @@ def find_extBCH( n, ext, g, verbose=False ):
 
 	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**ext)
 	alphas_power = [alpha_ext.power(i) for i in range(2**ext-1)]
-	roots_power, roots = find_roots( alphas_power, g, ext=log_ext )
+	roots_power, roots = GFn.finding_roots( g, ext=log_ext, alpha=alpha_ext )
 
 	max_d0 = 2
 	large = n*n
@@ -119,7 +101,7 @@ def find_tzeng( n, ext, g, verbose=False, check=True ):
 
 	zero_ext, one_ext, alpha_ext = GFn.gen_zero_one_alpha_overGFq(2**ext)
 	alphas_power = [alpha_ext.power(i) for i in range(2**ext-1)]
-	roots_power, roots = find_roots( alphas_power, g, ext=ext )
+	roots_power, roots = GFn.finding_roots( g, ext=log_ext, alpha=alpha_ext )
 
 	large = n*n
 	max_d0k0 = 2
@@ -211,11 +193,14 @@ def find_generators( n, m, q=2, verbose=0 ):
 		if i not in used and int(alpha.power(i).power(n))==1:
 			conjugate_power = find_conjugate( i, base=log_q, ext=log_ext )
 			conjugate = []
-			poly = np.poly1d([GFn.GFn(1,log_ext)])
+			poly = GFn.GFn_poly(1,log_ext)
+			# print("poly = \n", poly)
 			for i in conjugate_power:
 				# poly *= term = alpha^i
-				term = np.poly1d([GFn.GFn(1,log_ext), GFn.GFn(np.array([0]*i+[1]),log_ext)])
-				poly = np.polymul(poly,term)
+				term = GFn.GFn_poly([GFn.GFn(1,log_ext),alpha.power(i)])
+				# poly = np.polymul(poly,term)
+				poly = poly*term
+				# print("poly = \n", poly)
 			generator_base.append(poly)
 			cyclotonics.append(conjugate_power)
 			used.extend(conjugate_power)
@@ -231,7 +216,8 @@ def find_generators( n, m, q=2, verbose=0 ):
 
 	gens_gfm = []
 	for i, base in enumerate(generator_base):
-		gen_gfm = poly_map( base, log_ext, int(math.log2(q)) )
+		print("Base = \n", base)
+		gen_gfm = base.map_to(log_ext)
 		gens_gfm.append( gen_gfm )
 		if verbose:
 			print("Irreducible base #"+str(i))
@@ -245,9 +231,9 @@ def find_generators( n, m, q=2, verbose=0 ):
 	for selection in range(1,2**len(gens_gfm)-1):
 		bin_list = [int(ii) for ii in bin(selection)[2:]]
 		bin_list_aligned = [0]*(len(gens_gfm)-len(bin_list)) + bin_list
-		g = np.poly1d([GFn.GFn(1,int(math.log2(q)))])
+		g = GFn.GFn_poly(1,log_ext)
 		for sel, base in zip( bin_list_aligned, gens_gfm ):
-			if sel: g = np.polymul( g, base )
+			if sel: g *= base
 		generators.append(g)
 		if verbose:
 			print("Generator #", str(selection), ": ")
@@ -278,17 +264,17 @@ if __name__ == "__main__":
 		raise ValueError("Characteristic of alpha is not 2^m")
 
 	if args.gen is not None:
-		g_int = [int(s) for s in args.gen]
-		gens = [np.poly1d(GFn.intlist_to_gfpolylist( g_int, log_q ))]
+		gens = [GFn.GFn_poly( args.gen, log_q)]
 	else:
 		gens = find_generators(n,m,q,verbose=args.verbose)
 
 	zero_q, one_q, alpha_q = GFn.gen_zero_one_alpha_overGFq(q)
-	xn_1 = np.array([one_q]+[zero_q]*(n-1)+[one_q])
+	# xn_1 = np.array([one_q]+[zero_q]*(n-1)+[one_q])
+	xn_1 = (GFn.GFn_poly(1,log_q) << n) + GFn.GFn_poly(1,log_q)
 	for gg in gens:			
-		r = GFn.gfn_array_modulo( xn_1, gg )
-		if GFn.weight(r) > 0:
-			print("gg = \n", gg)
+		# r = GFn.gfn_array_modulo( xn_1, gg )
+		r = xn_1 % gg
+		if r.weight() is not 0:
 			raise Exception
 	
 	print("(n,m,q) = (", n, m, q, ")")
@@ -298,12 +284,11 @@ if __name__ == "__main__":
 			print("alphas #", i, ": alpha ^", i, "= ", x)
 
 	for g in gens:
-		roots_power, roots = find_roots( x_list, g, ext=log_ext )
+		roots_power, roots = GFn.finding_roots( g, ext=log_ext, alpha=alpha_ext )
 		if len(roots) is not g.order:
 			print("g(x) = ")
 			print(g)
-			print("len(g) = ", len(g))
-			err_msg = "g(x) is a ", str(len(g)-1), "-degree polynomial, but it has", str(len(roots)), "roots"
+			err_msg = "g(x) is a ", str(g.order), "-degree polynomial, but it has", str(len(roots)), "roots"
 			raise ValueError(err_msg)
 
 		if args.verbose:

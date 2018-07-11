@@ -40,6 +40,13 @@ def parse_gens( csv_name, logq, k, n, m ):
 	print("---")
 	return gens, weights
 
+def bit_diff( a_arr, b_arr ):
+	num_diff = 0
+	for a, b in zip(a_arr,b_arr):
+		if not (a+b).iszero():
+			num_diff += 1
+	return num_diff
+
 def main():
 
 	parser = argparse.ArgumentParser(description="Flip a switch by setting a flag")
@@ -69,7 +76,7 @@ def main():
 
 	# Read given generators and output sequence from csv
 	golden_snap, output_len = parse_golden( args.out_seq, logq=logq, m=m, n=n)
-	gens, weights = parse_gens("conv_csv/g.csv", logq=logq, k=k, n=n, m=m)
+	gens, weights = parse_gens( args.gen, logq=logq, k=k, n=n, m=m)
 
 	# Initialize vertexs and edges of the graph
 	zero_state = np.array( [GFn.GFn(0,logq)]*m*k )
@@ -116,10 +123,7 @@ def main():
 
 				# print("mem flat = ", mems.flatten())
 				# print("output/golden snap", outputs, golden_snap)
-				num_diff = 0
-				# print("outputs / golden_snap", i, " = ", outputs.shape, golden_snap[i].shape)
-				for a, b in zip(outputs, golden_snap[i]):
-					if not a == b: num_diff += 1
+				num_diff = bit_diff(outputs, golden_snap[i])
 				# print("diff = ", num_diff)
 				mems_flat = mems.flatten()
 				vex_new_names = [ v[0] for v in vex_new ]
@@ -168,19 +172,15 @@ def main():
 	# 	for e in e_layer:
 	# 		print("e = ", e)
 
-	input_predicted = [[]]*k
-	for i, e_layer in enumerate(bcjr1.edg):
-		# print("Edge layer #", i)
-		for e in e_layer:
-			# print("e = ", e)
-			# print("e = ", e, ", input = ", e[2][:k])
-			for j in range(k):
-				# print("j = ", j)
-				input_predicted[j] = input_predicted[j] + [e[2][j]]
+	input_predicted = np.empty( shape=(k,len(bcjr1.edg)), dtype=object )
+	for i, e_layer in enumerate(reversed(bcjr1.edg)):
+		if len(e_layer) is not 1:
+			raise Exception
+		e_inputs = e_layer[0][2][:k]
+		for j, e_input in enumerate(e_inputs):
+			input_predicted[j][i] = e_input
 	
-	input_predicted_poly = [None]*k
-	for i in range(k):
-		input_predicted_poly[i] = GFn.GFn_poly( input_predicted[i][::-1] )
+	input_predicted_poly = [GFn.GFn_poly(seq) for seq in input_predicted]
 
 	for o_index, o_gens in enumerate(zip( np.swapaxes(golden_snap,0,1), np.swapaxes(gens,0,1))):
 		o, gens = o_gens
@@ -188,7 +188,7 @@ def main():
 		print("Output #", o_index)
 		
 		for i, g in enumerate(gens):
-			print("input_predicted_poly[", i, "] = ", input_predicted[i][::-1])
+			print("input_predicted_poly[", i, "] = ", input_predicted[i])
 			print("g[", i, "] = ", g.c)
 			o_predicted_poly += input_predicted_poly[i] * g
 
