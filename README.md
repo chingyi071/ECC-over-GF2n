@@ -130,3 +130,12 @@ There are several kinds of usage in this BCH decoding code
   - E_1 = (1,a^14) => e1(x) = x
   - e(x) = e0(x) + e1(x) = x^5 + x
 9. c(x) = r(x) - e(x) = x^8 + x^7 + x^6 + x^4 + 1
+
+# Convolution code decoder
+## Usage
+```
+python3 conv_code.py
+```
+```
+python3 conv_code.py --q=4
+```
